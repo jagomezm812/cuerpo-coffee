@@ -1,0 +1,42 @@
+/*
+  Design tokens. Every color, size, and space value in the site comes from here.
+  No hardcoded colors or sizes anywhere else in the codebase.
+*/
+
+:root {
+  /* Color: six colors plus a line color. Do not add a seventh. */
+  --ink: #1a1614; /* body text, near-black warm */
+  --espresso: #3b2c24; /* secondary text, borders */
+  --muted: #6e625a; /* metadata, captions — darkened from spec's #8A7B70, which failed WCAG AA (3.51:1 on --crema); this hits 5.08:1 */
+  --crema: #f4ede4; /* page background */
+  --paper: #fbf9f6; /* card/raised surfaces */
+  --copper: #8c4b2f; /* the single accent: links, rules, small marks */
+  --line: rgba(26, 22, 20, 0.12);
+
+  /* Type */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --step--1: clamp(0.875rem, 0.83rem + 0.2vw, 0.9375rem);
+  --step-0: clamp(1.0625rem, 1rem + 0.28vw, 1.125rem);
+  --step-1: clamp(1.33rem, 1.22rem + 0.5vw, 1.5rem);
+  --step-2: clamp(1.66rem, 1.48rem + 0.85vw, 2rem);
+  --step-3: clamp(2.1rem, 1.8rem + 1.4vw, 2.8rem);
+  --step-4: clamp(2.6rem, 2.1rem + 2.3vw, 4rem);
+
+  /* Spacing: powers of a 4px base */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.5rem; /* 24px */
+  --space-6: 2rem; /* 32px */
+  --space-7: 3rem; /* 48px */
+  --space-8: 4rem; /* 64px */
+  --space-9: 6rem; /* 96px */
+  --space-10: 8rem; /* 128px */
+
+  /* Layout */
+  --measure: 68ch;
+  --radius: 2px;
+}

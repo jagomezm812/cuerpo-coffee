@@ -1,0 +1,71 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import ArticleCard from '../../../components/ArticleCard.astro';
+
+export async function getStaticPaths() {
+  const CATEGORIES = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing'] as const;
+  const articles = await getCollection('articles', ({ data }) => !data.draft);
+  return CATEGORIES.map((category) => ({
+    params: { category },
+    props: {
+      articles: articles
+        .filter((a) => a.data.category === category)
+        .sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf()),
+    },
+  }));
+}
+
+const { category } = Astro.params;
+const { articles } = Astro.props;
+---
+
+<Base
+  title={`${category} — Articles`}
+  description={`Cuerpo Coffee articles about ${category}.`}
+>
+  <section class="container category-page">
+    <header class="category-page__header">
+      <p class="category-page__eyebrow"><a href="/articles">All articles</a></p>
+      <h1>{category}</h1>
+    </header>
+
+    {
+      articles.length > 0 ? (
+        <div class="category-page__list">
+          {articles.map((article) => (
+            <ArticleCard article={article} />
+          ))}
+        </div>
+      ) : (
+        <p>No articles here yet.</p>
+      )
+    }
+  </section>
+</Base>
+
+<style>
+  .category-page {
+    padding-block: var(--space-8);
+    max-width: 56rem;
+    margin-inline: auto;
+  }
+
+  .category-page__header {
+    margin-bottom: var(--space-6);
+  }
+
+  .category-page__eyebrow {
+    margin-bottom: var(--space-3);
+  }
+
+  .category-page__eyebrow a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: var(--step--1);
+  }
+
+  .category-page h1 {
+    text-transform: capitalize;
+  }
+</style>

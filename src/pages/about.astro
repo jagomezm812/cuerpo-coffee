@@ -1,0 +1,43 @@
+---
+import Base from '../layouts/Base.astro';
+import Prose from '../components/Prose.astro';
+---
+
+<Base
+  title="About"
+  description="Why Cuerpo Coffee exists, who writes it, and what it's for: helping beginners make good coffee at home without the gear obsession."
+>
+  <article class="container about">
+    <h1>About</h1>
+    <Prose>
+      <p>
+        Cuerpo Coffee exists because most coffee writing is aimed at people who already
+        know what a refractometer is. This is for everyone else: the people who want a
+        genuinely good cup at home, without buying $2,000 of equipment or memorizing a
+        dozen brewing rituals first.
+      </p>
+      <p>
+        <!-- TODO (owner): replace with the real bio and a real photograph before launch. -->
+        I got into coffee the way most people do: badly, with a bad burr grinder and worse
+        water. Every article here comes from a mistake I made first, so you don't have to
+        make it too.
+      </p>
+      <p>
+        This publication teaches fundamentals over gear, and troubleshooting over trends.
+        If an article doesn't make your next cup better, it hasn't done its job.
+      </p>
+    </Prose>
+  </article>
+</Base>
+
+<style>
+  .about {
+    padding-block: var(--space-8);
+    max-width: var(--measure);
+    margin-inline: auto;
+  }
+
+  .about h1 {
+    margin-bottom: var(--space-6);
+  }
+</style>

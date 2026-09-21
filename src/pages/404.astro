@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Page not found" description="This page doesn't exist.">
+  <section class="container not-found">
+    <h1>Wrong grind, wrong page.</h1>
+    <p>This one didn't extract. Try the articles instead.</p>
+    <a href="/articles">Back to articles</a>
+  </section>
+</Base>
+
+<style>
+  .not-found {
+    padding-block: var(--space-10);
+    text-align: center;
+    max-width: 40rem;
+    margin-inline: auto;
+  }
+
+  .not-found p {
+    margin-top: var(--space-4);
+    color: var(--espresso);
+  }
+
+  .not-found a {
+    display: inline-block;
+    margin-top: var(--space-6);
+  }
+</style>

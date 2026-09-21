@@ -1,0 +1,111 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import Base from './Base.astro';
+import Prose from '../components/Prose.astro';
+import ArticleCard from '../components/ArticleCard.astro';
+import EmailCapture from '../components/EmailCapture.astro';
+import { Image } from 'astro:assets';
+
+export interface Props {
+  article: CollectionEntry<'articles'>;
+  readingTimeMinutes: number;
+  relatedArticles: CollectionEntry<'articles'>[];
+}
+
+const { article, readingTimeMinutes, relatedArticles } = Astro.props;
+const { title, description, publishDate, updatedDate, heroImage, heroAlt } = article.data;
+
+const formattedDate = publishDate.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+---
+
+<Base title={title} description={description} articleMeta={{ publishDate, updatedDate }}>
+  <article class="container article">
+    <header class="article__header">
+      <h1>{title}</h1>
+      <p class="article__standfirst">{description}</p>
+      <p class="article__meta">
+        <time datetime={publishDate.toISOString()}>{formattedDate}</time>
+        <span aria-hidden="true">·</span>
+        <span>{readingTimeMinutes} min read</span>
+      </p>
+    </header>
+
+    {
+      heroImage && (
+        <Image
+          src={heroImage}
+          alt={heroAlt ?? ''}
+          class="article__hero"
+          widths={[480, 768, 1200]}
+          sizes="(min-width: 72rem) 72rem, 100vw"
+          format="avif"
+        />
+      )
+    }
+
+    <Prose>
+      <slot />
+    </Prose>
+
+    <div class="article__capture">
+      <EmailCapture />
+    </div>
+
+    {
+      relatedArticles.length > 0 && (
+        <section class="article__related">
+          <h2>Related</h2>
+          {relatedArticles.map((related) => (
+            <ArticleCard article={related} />
+          ))}
+        </section>
+      )
+    }
+  </article>
+</Base>
+
+<style>
+  .article {
+    padding-block: var(--space-8);
+  }
+
+  .article__header {
+    max-width: var(--measure);
+    margin-inline: auto;
+    margin-bottom: var(--space-6);
+  }
+
+  .article__standfirst {
+    font-size: var(--step-1);
+    color: var(--espresso);
+    margin-top: var(--space-4);
+  }
+
+  .article__meta {
+    color: var(--muted);
+    font-size: var(--step--1);
+    margin-top: var(--space-4);
+  }
+
+  .article__hero {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    margin-bottom: var(--space-6);
+  }
+
+  .article__capture {
+    margin-top: var(--space-9);
+  }
+
+  .article__related {
+    max-width: var(--measure);
+    margin-inline: auto;
+    margin-top: var(--space-9);
+  }
+</style>

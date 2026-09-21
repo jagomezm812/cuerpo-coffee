@@ -1,0 +1,118 @@
+---
+import { getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
+import Base from '../layouts/Base.astro';
+import ArticleCard from '../components/ArticleCard.astro';
+import EmailCapture from '../components/EmailCapture.astro';
+
+const allArticles = (await getCollection('articles', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf()
+);
+
+const featured = allArticles.find((a) => a.data.featured) ?? allArticles[0];
+const recent = allArticles.filter((a) => a.id !== featured?.id).slice(0, 6);
+---
+
+<Base
+  title="Cuerpo Coffee"
+  description="A coffee publication that teaches beginners to make good coffee at home, one clear, unhurried article at a time."
+>
+  <section class="hero container">
+    <h1>Cuerpo Coffee</h1>
+    <p class="hero__tagline">Make good coffee at home. No gear obsession, no jargon.</p>
+  </section>
+
+  {
+    featured && (
+      <section class="container featured">
+        {featured.data.heroImage && (
+          <a href={`/articles/${featured.id}`}>
+            <Image
+              src={featured.data.heroImage}
+              alt={featured.data.heroAlt ?? ''}
+              class="featured__image"
+              widths={[480, 768, 1200]}
+              sizes="(min-width: 72rem) 72rem, 100vw"
+              format="avif"
+            />
+          </a>
+        )}
+        <p class="featured__category">{featured.data.category}</p>
+        <h2>
+          <a href={`/articles/${featured.id}`}>{featured.data.title}</a>
+        </h2>
+        <p class="featured__description">{featured.data.description}</p>
+      </section>
+    )
+  }
+
+  <section class="container recent">
+    {recent.map((article) => <ArticleCard article={article} />)}
+  </section>
+
+  <section class="container capture-section">
+    <EmailCapture />
+  </section>
+</Base>
+
+<style>
+  .hero {
+    padding-block: var(--space-10) var(--space-8);
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: var(--step-4);
+  }
+
+  .hero__tagline {
+    margin-top: var(--space-4);
+    color: var(--espresso);
+    font-size: var(--step-1);
+  }
+
+  .featured {
+    padding-block: var(--space-6);
+    max-width: 56rem;
+    margin-inline: auto;
+  }
+
+  .featured__image {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    margin-bottom: var(--space-5);
+  }
+
+  .featured__category {
+    color: var(--muted);
+    font-size: var(--step--1);
+    text-transform: capitalize;
+    margin-bottom: var(--space-2);
+  }
+
+  .featured h2 a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .featured h2 a:hover {
+    color: var(--copper);
+  }
+
+  .featured__description {
+    color: var(--espresso);
+    margin-top: var(--space-3);
+    max-width: var(--measure);
+  }
+
+  .recent {
+    max-width: 56rem;
+    margin-inline: auto;
+    padding-block: var(--space-6);
+  }
+
+  .capture-section {
+    padding-block: var(--space-9);
+  }
+</style>

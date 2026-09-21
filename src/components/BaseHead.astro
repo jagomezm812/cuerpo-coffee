@@ -1,0 +1,73 @@
+---
+export interface Props {
+  title: string;
+  description: string;
+  image?: string;
+  articleMeta?: {
+    publishDate: Date;
+    updatedDate?: Date;
+  };
+}
+
+const { title, description, image, articleMeta } = Astro.props;
+
+const siteName = 'Cuerpo Coffee';
+const fullTitle = title === siteName ? title : `${title} — ${siteName}`;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const ogImage = image ? new URL(image, Astro.site).toString() : undefined;
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="canonical" href={canonicalURL} />
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+
+<link
+  rel="preload"
+  href="/fonts/inter-400.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin
+/>
+<link
+  rel="preload"
+  href="/fonts/fraunces-600.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin
+/>
+
+<meta property="og:type" content={articleMeta ? 'article' : 'website'} />
+<meta property="og:site_name" content={siteName} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonicalURL} />
+{ogImage && <meta property="og:image" content={ogImage} />}
+
+<meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+{ogImage && <meta name="twitter:image" content={ogImage} />}
+
+{
+  articleMeta && (
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: title,
+        description,
+        ...(ogImage ? { image: ogImage } : {}),
+        datePublished: articleMeta.publishDate.toISOString(),
+        dateModified: (articleMeta.updatedDate ?? articleMeta.publishDate).toISOString(),
+        publisher: {
+          '@type': 'Organization',
+          name: siteName,
+        },
+      })}
+    />
+  )
+}

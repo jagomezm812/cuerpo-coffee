@@ -1,0 +1,91 @@
+---
+export interface Props {
+  heading?: string;
+  body?: string;
+}
+
+const {
+  heading = 'Get one good coffee idea a week.',
+  body = 'No spam, no upsells in every email. Just what actually improves the cup.',
+} = Astro.props;
+---
+
+<section class="email-capture">
+  <h2>{heading}</h2>
+  <p>{body}</p>
+  <!-- Wired to Kit's hosted form endpoint in Phase 2. -->
+  <form class="email-capture__form">
+    <label for="email-capture-input" class="visually-hidden">Email address</label>
+    <input
+      id="email-capture-input"
+      type="email"
+      name="email"
+      placeholder="you@example.com"
+      required
+    />
+    <button type="submit">Subscribe</button>
+  </form>
+</section>
+
+<style>
+  .email-capture {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-7) var(--space-5);
+    text-align: center;
+    max-width: 40rem;
+    margin-inline: auto;
+  }
+
+  .email-capture h2 {
+    font-size: var(--step-1);
+    margin-bottom: var(--space-3);
+  }
+
+  .email-capture p {
+    color: var(--muted);
+    margin-bottom: var(--space-5);
+  }
+
+  .email-capture__form {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .email-capture__form input {
+    flex: 1 1 16rem;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--crema);
+    color: var(--ink);
+  }
+
+  .email-capture__form button {
+    padding: var(--space-3) var(--space-5);
+    border: 1px solid var(--copper);
+    border-radius: var(--radius);
+    background: var(--copper);
+    color: var(--paper);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+
+  .email-capture__form button:hover {
+    background: var(--espresso);
+    border-color: var(--espresso);
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+</style>
