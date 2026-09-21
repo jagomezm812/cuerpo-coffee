@@ -9,8 +9,14 @@ Not a developer. Can run given commands; will not debug code. Explain new concep
 ## Environment
 `git` and `gh` are installed and authenticated on this machine (gh: account jagomezm812,
 github.com, SSH protocol). Commits and PRs can be made directly — no need to ask the
-owner to authenticate anything first. Still confirm before pushing or opening PRs,
-per the working agreement.
+owner to authenticate anything first.
+
+## Git workflow
+Every time changes are made in a session, commit and push to `origin main` — don't
+wait to be asked each time. This replaces the default "only commit when explicitly
+asked" caution for this repo specifically. Still use judgment: don't push obviously
+broken or half-finished work (run `npm run build` / `npm run check` first), and still
+ask before anything destructive (force-push, history rewrite, etc.).
 
 ## Stack
 Astro (static) · Markdown content collections · plain CSS with tokens · Keystatic at /keystatic ·
