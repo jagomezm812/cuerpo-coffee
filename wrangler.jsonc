@@ -1,0 +1,14 @@
+{
+  // Must match the Worker name already registered in the Cloudflare
+  // dashboard for this project, or Workers Builds refuses to deploy.
+  "name": "cuerpo-coffee",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-22",
+  "assets": {
+    // Astro's build output (npm run build). Anything not matched by the
+    // Worker's own routing in worker/index.ts is served from here,
+    // including public/_redirects and public/robots.txt as-is.
+    "directory": "./dist",
+    "binding": "ASSETS"
+  }
+}
