@@ -4,6 +4,9 @@ dist/
 # generated types
 .astro/
 
+# local wrangler cache (from testing Cloudflare Pages Functions locally)
+.wrangler/
+
 # dependencies
 node_modules/
 

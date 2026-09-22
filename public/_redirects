@@ -1,0 +1,7 @@
+# Keystatic is a client-side single-page app that renders at /keystatic-app,
+# behind the /keystatic URL. Routing it through a differently-named target
+# avoids Cloudflare's own trailing-slash normalization colliding with the
+# wildcard rule below (pointing /keystatic/* at /keystatic/index.html
+# directly creates an infinite-loop warning in Cloudflare's redirect linter).
+/keystatic /keystatic-app 200
+/keystatic/* /keystatic-app 200

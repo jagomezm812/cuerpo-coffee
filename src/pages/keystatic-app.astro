@@ -1,0 +1,20 @@
+---
+// This page is a static shell: makePage() returns a React component that
+// renders nothing until it hydrates client-side (client:only="react"), so
+// this page prerenders fine even though the whole site is static output.
+// All real work (reading/writing GitHub) happens in the Cloudflare Pages
+// Function at functions/api/keystatic/[[params]].js — see CLAUDE.md.
+import { Keystatic } from '../keystatic-page';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Keystatic — Cuerpo Coffee</title>
+  </head>
+  <body>
+    <Keystatic client:only="react" />
+  </body>
+</html>

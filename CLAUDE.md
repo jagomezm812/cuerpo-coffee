@@ -81,7 +81,60 @@ needs the owner's Cloudflare account, so it happens outside this coding session.
   `og:image`/`twitter:image` are simply omitted for now rather than pointing at a
   missing file.
 
-**Next up (Phase 2):** Keystatic at `/keystatic`, real Kit form wiring in
-`EmailCapture`, `/subscribe` landing page (and restore the header's third link),
-Cloudflare Web Analytics, RSS + sitemap (`@astrojs/sitemap` — first new dependency,
-build-time only, no client cost), build-time OG image generation.
+**Phase 2, part 1 (Keystatic): built, not yet usable — needs one owner step.**
+`keystatic.config.ts` at the repo root defines the `articles` collection with every
+frontmatter field from `src/content.config.ts` editable (title→slug, description,
+publishDate, updatedDate, category, tags, heroImage+heroAlt, draft, featured) plus
+the markdown body, in GitHub storage mode against `jagomezm812/cuerpo-coffee`.
+
+How it's wired (worth understanding before touching any of this):
+- The site stays **fully static**. Keystatic's GitHub mode needs a server-side OAuth
+  token exchange — true of any GitHub-backed browser CMS, not a Keystatic quirk —
+  so that one piece runs as a **Cloudflare Pages Function**
+  (`functions/api/keystatic/[[params]].js`), using `@keystatic/core`'s
+  platform-agnostic `makeGenericAPIRouteHandler`. This is the only server-side code
+  anywhere in the project. It deploys automatically with the existing Cloudflare
+  Pages git integration — no separate deploy step, no hosting migration.
+- We deliberately did **not** use `@astrojs/cloudflare` (the official Astro Cloudflare
+  adapter). As of the version installed during this session, that adapter targets
+  Cloudflare **Workers** only — it dropped Pages support — which would have meant
+  migrating the whole site off Pages. The hand-rolled Function above avoids that
+  entirely and keeps Cloudflare Pages exactly as the plan specifies.
+- The admin UI itself (`src/pages/keystatic-app.astro`, wrapped by
+  `src/keystatic-page.ts`) is a plain static page — `client:only="react"` means it
+  prerenders as an empty shell + JS bundle, no SSR needed. `@astrojs/react` was
+  added as a dependency for this (needed to hydrate that one island; adds no JS to
+  any public page — verified: `dist/index.html` and every article page still ship
+  zero `<script>` tags).
+- `/keystatic` and `/keystatic/*` are proxied to `/keystatic-app` via
+  `public/_redirects`, so Keystatic's client-side router works on any sub-path.
+  **Gotcha, if this ever needs touching again:** a `_redirects` rule that points at
+  a literal `.../index.html` (or that resolves to a path Cloudflare would itself
+  normalize back to the rule's own trigger) gets silently ignored by Cloudflare as
+  an "infinite loop" — confirmed with `wrangler pages dev`'s redirect linter. The
+  fix was routing through a *differently-named* path (`keystatic-app`, not
+  `keystatic`) with no `/index.html` suffix in the destination.
+- Verified so far: `npm run build` and `astro check` pass clean; a local
+  `wrangler pages dev dist` smoke test confirms the Function's imports resolve, the
+  Worker compiles, and `/keystatic` and deep links both resolve to a working shell
+  that loads its JS bundle. **Not** verified: an actual GitHub OAuth round-trip —
+  that needs a real GitHub App and a live deployed URL, neither of which exist yet.
+
+**Before Keystatic works live, the owner needs to:**
+1. Confirm the real production domain (`astro.config.mjs`'s `site` is still the
+   `cuerpocoffee.com` placeholder — the OAuth callback URL depends on the final
+   domain, so this should happen first).
+2. Create a GitHub App for OAuth (Settings → Developer settings → GitHub Apps, on
+   the `jagomezm812` account) — Keystatic's own `/keystatic` setup screen walks
+   through this and hands back a client ID/secret once a repo and callback URL are
+   given. This is an external, account-level action; a future session can attempt
+   it via `gh api` if asked, but hasn't here since it needs the final domain first
+   and creates a real artifact under the owner's GitHub account.
+3. Set three environment variables in the Cloudflare Pages project settings:
+   `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET`, `KEYSTATIC_SECRET`
+   (the last one is any long random string — Keystatic uses it to sign sessions).
+
+**Next up (Phase 2, remaining):** real Kit form wiring in `EmailCapture`,
+`/subscribe` landing page (and restore the header's third link), Cloudflare Web
+Analytics, RSS + sitemap (`@astrojs/sitemap` — next new dependency, build-time only,
+no client cost), build-time OG image generation.
