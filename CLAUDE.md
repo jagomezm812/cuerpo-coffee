@@ -79,8 +79,9 @@ rest of Phase 1's "done when," and needs the owner to check the Cloudflare dashb
   inline after the article's second `<h2>` too — that needs a markdown-injection
   step (remark/rehype) that's more sensibly built alongside the real Kit embed in
   Phase 2, not against a form that doesn't submit anywhere yet.
-- `astro.config.mjs` sets `site: 'https://cuerpocoffee.com'` as a placeholder — it
-  feeds canonical URLs and OG tags. **Confirm or correct this before going live.**
+- ~~`astro.config.mjs` sets a placeholder domain~~ — resolved: real domain is
+  `cuerpo.coffee`, confirmed live by the owner and set as `site` in
+  `astro.config.mjs`.
 - No hero images on the seed articles or a real photo on `/about` — avoided
   fabricating stock imagery. `/about` has a placeholder-bio comment; real bio +
   photo, and any hero images, are content the owner adds (via Keystatic, from
@@ -152,21 +153,26 @@ How it's actually wired:
   tied to what's deployed rather than a separate one-time account setting, but this
   hasn't been watched happen.
 
-**Before Keystatic works live, the owner needs to:**
-1. Push this to `main` and confirm the Workers Build succeeds, then check whether
-   Settings → Variables and secrets has unlocked on the `cuerpo-coffee` Worker.
-2. Confirm the real production domain (`astro.config.mjs`'s `site` is still the
-   `cuerpocoffee.com` placeholder — the OAuth callback URL depends on the final
-   domain, so this should happen before step 3).
-3. Create a GitHub App for OAuth (Settings → Developer settings → GitHub Apps, on
-   the `jagomezm812` account) — Keystatic's own `/keystatic` setup screen walks
-   through this and hands back a client ID/secret once a repo and callback URL are
-   given. This is an external, account-level action; a future session can attempt
-   it via `gh api` if asked, but hasn't here since it needs the final domain first
-   and creates a real artifact under the owner's GitHub account.
-4. Set three environment variables on the `cuerpo-coffee` Worker (once unlocked):
-   `KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET`, `KEYSTATIC_SECRET`
-   (the last one is any long random string — Keystatic uses it to sign sessions).
+**Status: domain confirmed, owner is setting up the GitHub App + Cloudflare env vars now.**
+Real production domain is `cuerpo.coffee` (confirmed live) — set as `site` in
+`astro.config.mjs`. The two required OAuth callback URLs (verified against
+`@keystatic/core`'s actual source, path is `/api/keystatic/github/oauth/callback`):
+- `https://<worker>.<account-subdomain>.workers.dev/api/keystatic/github/oauth/callback`
+  (for testing before/without the custom domain)
+- `https://cuerpo.coffee/api/keystatic/github/oauth/callback` (production)
+
+Remaining before Keystatic works live:
+1. Owner creates the GitHub App (Settings → Developer settings → GitHub Apps, on the
+   `jagomezm812` account) with the callback URLs above, and gets back a client
+   ID/secret — in progress as of this session.
+2. Owner sets three env vars on the `cuerpo-coffee` Worker: `KEYSTATIC_GITHUB_CLIENT_ID`
+   (plain text), `KEYSTATIC_GITHUB_CLIENT_SECRET` (Secret), `KEYSTATIC_SECRET` (Secret,
+   ≥32 chars — Keystatic throws at runtime otherwise; a value was generated and handed
+   to the owner directly in this session, not stored anywhere in the repo) — in
+   progress as of this session.
+3. Once both are done: confirm the Variables/Bindings tab actually unlocked (still
+   unverified — see above), then do a real end-to-end check by opening `/keystatic`
+   on the live site and completing the GitHub sign-in flow.
 
 **Next up (Phase 2, remaining):** real Kit form wiring in `EmailCapture`,
 `/subscribe` landing page (and restore the header's third link), Cloudflare Web
