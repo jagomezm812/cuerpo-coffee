@@ -26,7 +26,20 @@ export default {
         clientSecret: env.KEYSTATIC_GITHUB_CLIENT_SECRET,
         secret: env.KEYSTATIC_SECRET,
       });
-      const result = await handler(request);
+      // TEMPORARY diagnostic try/catch: production returns Cloudflare's opaque
+      // "error code: 1101" for any uncaught exception here, with no way to see
+      // the real message without wrangler tail (which needs the owner's own
+      // authenticated session). Remove this once the cause of the live-only
+      // 500 on github/refresh-token is found and fixed.
+      let result;
+      try {
+        result = await handler(request);
+      } catch (err) {
+        return new Response(
+          `keystatic handler threw: ${err instanceof Error ? `${err.name}: ${err.message}\n${err.stack}` : String(err)}`,
+          { status: 500 }
+        );
+      }
       // Astro's tsconfig pulls in DOM lib types, whose Uint8Array generic
       // doesn't structurally match the one @keystatic/core's types use —
       // a type-checker-only mismatch, not a runtime one (BodyInit accepts
