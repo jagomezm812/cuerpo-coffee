@@ -20,19 +20,21 @@ export default {
     const { pathname } = new URL(request.url);
 
     if (pathname.startsWith('/api/keystatic/')) {
-      const handler = makeGenericAPIRouteHandler({
-        config: keystaticConfig,
-        clientId: env.KEYSTATIC_GITHUB_CLIENT_ID,
-        clientSecret: env.KEYSTATIC_GITHUB_CLIENT_SECRET,
-        secret: env.KEYSTATIC_SECRET,
-      });
       // TEMPORARY diagnostic try/catch: production returns Cloudflare's opaque
       // "error code: 1101" for any uncaught exception here, with no way to see
       // the real message without wrangler tail (which needs the owner's own
-      // authenticated session). Remove this once the cause of the live-only
-      // 500 on github/refresh-token is found and fixed.
+      // authenticated session). Turns out this is universal — every
+      // /api/keystatic/* route fails identically, including ones that worked
+      // earlier — so it's most likely in handler construction itself, not
+      // request handling; wrapping construction too, not just the await.
       let result;
       try {
+        const handler = makeGenericAPIRouteHandler({
+          config: keystaticConfig,
+          clientId: env.KEYSTATIC_GITHUB_CLIENT_ID,
+          clientSecret: env.KEYSTATIC_GITHUB_CLIENT_SECRET,
+          secret: env.KEYSTATIC_SECRET,
+        });
         result = await handler(request);
       } catch (err) {
         return new Response(
