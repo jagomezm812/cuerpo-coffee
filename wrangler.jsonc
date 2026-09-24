@@ -7,8 +7,18 @@
   "assets": {
     // Astro's build output (npm run build). Anything not matched by the
     // Worker's own routing in worker/index.ts is served from here,
-    // including public/_redirects and public/robots.txt as-is.
+    // including public/robots.txt as-is.
     "directory": "./dist",
     "binding": "ASSETS"
+  },
+  // Plain (non-secret) vars only — `wrangler deploy` wipes any dashboard-set
+  // plain-text vars on every deploy unless they're declared here, which bit
+  // us in production once already. KEYSTATIC_GITHUB_CLIENT_ID is not
+  // sensitive (it's visible in the browser during the OAuth redirect
+  // regardless), so it's safe to commit. KEYSTATIC_GITHUB_CLIENT_SECRET and
+  // KEYSTATIC_SECRET stay as Cloudflare dashboard Secrets — those persist
+  // across deploys on their own and must never go here.
+  "vars": {
+    "KEYSTATIC_GITHUB_CLIENT_ID": "Ov23ctRATL0Snr3TuWuM"
   }
 }
