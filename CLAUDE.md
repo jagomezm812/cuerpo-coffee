@@ -129,50 +129,58 @@ How it's actually wired:
   added as a dependency for this (needed to hydrate that one island; adds no JS to
   any public page — verified: `dist/index.html` and every article page still ship
   zero `<script>` tags).
-- `/keystatic` and `/keystatic/*` are proxied to `/keystatic-app` via
-  `public/_redirects` — confirmed this still works under the Workers-with-assets
-  model (redirects apply only to paths resolved as static assets, so there's no
-  conflict with the Worker's own `/api/keystatic/*` routing).
-  **Gotcha, if this ever needs touching again:** a `_redirects` rule that points at
-  a literal `.../index.html` (or that resolves to a path Cloudflare would itself
-  normalize back to the rule's own trigger) gets silently ignored by Cloudflare as
-  an "infinite loop." The fix was routing through a *differently-named* path
-  (`keystatic-app`, not `keystatic`) with no `/index.html` suffix in the destination.
-- Verified so far: `npm run build` and `astro check` pass clean; `wrangler deploy
-  --dry-run` bundles the Worker successfully against the real `dist/` output; a local
-  `wrangler dev` smoke test (with fake env vars) confirms `/`, articles, `/keystatic`,
-  a deep link under it, and `robots.txt` all resolve correctly, and — confirmed via
-  the local request-trace log, not just an assumption — that `/api/keystatic/*`
-  requests are actually reaching the Worker's own handler code, not silently falling
-  through to static-asset serving. **Not** verified: an actual GitHub OAuth
-  round-trip — that needs a real GitHub App and a live deployed URL, neither of
-  which exist yet. Also unconfirmed: whether adding a real `main` script actually
-  unlocks the Variables/Bindings tab (currently disabled with "Variables cannot be
-  added to a Worker that only has static assets") — that should resolve once this
-  code deploys and the Worker has real code, since the restriction is presumably
-  tied to what's deployed rather than a separate one-time account setting, but this
-  hasn't been watched happen.
+- `/keystatic` and any `/keystatic/*` sub-path are handled **inside
+  `worker/index.ts`**, not via `public/_redirects` (that file has been deleted).
+  The Worker fetches the built shell (which physically lives at `/keystatic-app`,
+  kept under a separate name so this rule can't match its own target) from
+  `env.ASSETS` and returns its content directly for the original request — no HTTP
+  redirect, so the browser's visible URL never changes.
+  **Why this matters, and why `_redirects` was wrong:** Keystatic's admin UI is a
+  client-side SPA with its own router, hardcoded to assume it's mounted at
+  `/keystatic` — confirmed by reading `@keystatic/core`'s UI bundle directly, there
+  is no `basePath` prop anywhere between the Astro glue and Keystatic's root
+  component. A `_redirects` proxy rule looks like it should mask the URL, but it
+  actually performs a real, visible 307/308 redirect (Cloudflare's "200 proxy"
+  target still gets normalized and redirected to when it doesn't already end in a
+  trailing slash) — so the browser ended up at `/keystatic-app/`, Keystatic's router
+  couldn't parse that into any known route, and it rendered its own client-side
+  "Not found" empty state. This looked exactly like a dead route/404 and cost a full
+  round of "verified working" that wasn't — the earlier check only confirmed the
+  HTTP status code and HTML shell loaded, not that the React app inside it rendered
+  correctly post-redirect. Lesson: for anything with client-side routing, check what
+  actually renders in a browser, not just the response code.
+- The OAuth app in use is a **classic GitHub OAuth App**, not a GitHub App — read
+  `@keystatic/core`'s OAuth handlers directly to confirm this is fine: both use the
+  identical `github.com/login/oauth/authorize` → `.../access_token` flow, and the
+  repo-reading/writing code has zero GitHub-App-installation-specific logic. A
+  GitHub App would scope access to just this repo instead of the OAuth App's
+  broader `repo` scope (access to every repo the account can reach) — a real but
+  low-severity gap worth knowing, not a functional blocker.
+- Verified, this time by actually loading the page in a browser (not just checking
+  HTTP status): `npm run build`/`astro check` pass clean; `wrangler deploy --dry-run`
+  bundles correctly; a local `wrangler dev` run confirms `/keystatic` and
+  `/keystatic/*` now return 200 with **no redirect** (checked headers directly); and
+  — the actual regression test — loading `/keystatic` in a real Chrome tab renders
+  Keystatic's genuine "Log in with GitHub" screen, not the "Not found" state, with a
+  clean console.
 
-**Status: domain confirmed, owner is setting up the GitHub App + Cloudflare env vars now.**
-Real production domain is `cuerpo.coffee` (confirmed live) — set as `site` in
-`astro.config.mjs`. The two required OAuth callback URLs (verified against
-`@keystatic/core`'s actual source, path is `/api/keystatic/github/oauth/callback`):
-- `https://<worker>.<account-subdomain>.workers.dev/api/keystatic/github/oauth/callback`
-  (for testing before/without the custom domain)
-- `https://cuerpo.coffee/api/keystatic/github/oauth/callback` (production)
+**Status: fully wired and confirmed live.** Domain (`cuerpo.coffee`), all three env
+vars (`KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET`,
+`KEYSTATIC_SECRET`), and the OAuth App's callback URL are all set and confirmed
+working end-to-end on the live site:
+- `GET /api/keystatic/github/login` → 307 to `github.com/login/oauth/authorize`
+  with the correct `client_id` and `redirect_uri=https://cuerpo.coffee/api/keystatic/github/oauth/callback`.
+- `GET /api/keystatic/github/oauth/callback` with a bad code → clean 401
+  "Authorization failed" (not a crash) — confirms the secret and callback path are
+  both correctly wired.
+- `/keystatic` on the live site was broken by the `_redirects` bug above at the time
+  those two checks were run; that's now fixed in this same session (see above) and
+  re-verified in a real browser locally, but **not yet re-checked against the live
+  site** — do that first thing next session, or right after this deploys.
 
-Remaining before Keystatic works live:
-1. Owner creates the GitHub App (Settings → Developer settings → GitHub Apps, on the
-   `jagomezm812` account) with the callback URLs above, and gets back a client
-   ID/secret — in progress as of this session.
-2. Owner sets three env vars on the `cuerpo-coffee` Worker: `KEYSTATIC_GITHUB_CLIENT_ID`
-   (plain text), `KEYSTATIC_GITHUB_CLIENT_SECRET` (Secret), `KEYSTATIC_SECRET` (Secret,
-   ≥32 chars — Keystatic throws at runtime otherwise; a value was generated and handed
-   to the owner directly in this session, not stored anywhere in the repo) — in
-   progress as of this session.
-3. Once both are done: confirm the Variables/Bindings tab actually unlocked (still
-   unverified — see above), then do a real end-to-end check by opening `/keystatic`
-   on the live site and completing the GitHub sign-in flow.
+**Not yet done:** an actual completed GitHub sign-in on the live site (only the
+redirect and callback plumbing have been checked, not a full successful round-trip
+with a real authorization).
 
 **Next up (Phase 2, remaining):** real Kit form wiring in `EmailCapture`,
 `/subscribe` landing page (and restore the header's third link), Cloudflare Web

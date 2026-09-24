@@ -37,6 +37,25 @@ export default {
       });
     }
 
+    // Keystatic's admin UI is a client-side SPA with its own router, which
+    // is hardcoded to assume it's mounted at /keystatic (there is no
+    // basePath prop — confirmed by reading @keystatic/core's UI bundle
+    // directly). The built shell physically lives at /keystatic-app (a
+    // separate name so the rule below can't ever match its own target),
+    // but it must be served AT /keystatic and any /keystatic/* sub-path
+    // without an HTTP redirect — a redirect changes the browser's visible
+    // URL, which breaks Keystatic's own route parsing (it renders its own
+    // "Not found" state). So this fetches the shell server-side and
+    // returns its content directly, leaving the request URL untouched.
+    if (pathname === '/keystatic' || pathname.startsWith('/keystatic/')) {
+      const assetUrl = new URL(request.url);
+      assetUrl.pathname = '/keystatic-app/';
+      return env.ASSETS.fetch(new Request(assetUrl.toString(), {
+        method: request.method,
+        headers: request.headers,
+      }));
+    }
+
     return env.ASSETS.fetch(request);
   },
 };
