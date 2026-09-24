@@ -156,31 +156,44 @@ How it's actually wired:
   GitHub App would scope access to just this repo instead of the OAuth App's
   broader `repo` scope (access to every repo the account can reach) — a real but
   low-severity gap worth knowing, not a functional blocker.
-- Verified, this time by actually loading the page in a browser (not just checking
-  HTTP status): `npm run build`/`astro check` pass clean; `wrangler deploy --dry-run`
-  bundles correctly; a local `wrangler dev` run confirms `/keystatic` and
-  `/keystatic/*` now return 200 with **no redirect** (checked headers directly); and
-  — the actual regression test — loading `/keystatic` in a real Chrome tab renders
-  Keystatic's genuine "Log in with GitHub" screen, not the "Not found" state, with a
-  clean console.
+- **Second gotcha, more expensive than the first:** after the routing fix above was
+  pushed (and two more small commits after it), every single `/api/keystatic/*`
+  route started throwing — including ones that had worked minutes earlier —
+  producing Cloudflare's opaque "error code: 1101" with zero diagnostic
+  information. Root cause, found only by temporarily wrapping
+  `makeGenericAPIRouteHandler(...)` construction in a try/catch that returned the
+  real error as the response body (since `wrangler tail` needs the owner's own
+  Cloudflare auth, not available here): **`wrangler deploy` deletes dashboard-set
+  plain-text environment variables on every single deploy**, unless they're
+  declared in `wrangler.jsonc` or `--keep-vars` is passed (neither was true here).
+  `KEYSTATIC_GITHUB_CLIENT_ID` was set as a plain var in the dashboard, so every
+  deploy after it was set quietly wiped it back out. `KEYSTATIC_GITHUB_CLIENT_SECRET`
+  and `KEYSTATIC_SECRET`, both Secrets, were unaffected — Secrets persist across
+  deploys on their own; this behavior is specific to plain vars.
+  **Fixed for good:** `KEYSTATIC_GITHUB_CLIENT_ID` now lives in `wrangler.jsonc`'s
+  `vars` block, committed to the repo. It's not sensitive (already visible in the
+  browser during the OAuth redirect), so this is safe. **The two real secrets must
+  never move into `wrangler.jsonc`** — they stay dashboard-only Secrets.
 
-**Status: fully wired and confirmed live.** Domain (`cuerpo.coffee`), all three env
-vars (`KEYSTATIC_GITHUB_CLIENT_ID`, `KEYSTATIC_GITHUB_CLIENT_SECRET`,
-`KEYSTATIC_SECRET`), and the OAuth App's callback URL are all set and confirmed
-working end-to-end on the live site:
+**Status: fully wired and confirmed working, end to end, on the live site
+(re-verified after the fix above, not just before it):**
 - `GET /api/keystatic/github/login` → 307 to `github.com/login/oauth/authorize`
-  with the correct `client_id` and `redirect_uri=https://cuerpo.coffee/api/keystatic/github/oauth/callback`.
+  with the correct `client_id` (`Ov23ctRATL0Snr3TuWuM`) and
+  `redirect_uri=https://cuerpo.coffee/api/keystatic/github/oauth/callback`.
 - `GET /api/keystatic/github/oauth/callback` with a bad code → clean 401
-  "Authorization failed" (not a crash) — confirms the secret and callback path are
-  both correctly wired.
-- `/keystatic` on the live site was broken by the `_redirects` bug above at the time
-  those two checks were run; that's now fixed in this same session (see above) and
-  re-verified in a real browser locally, but **not yet re-checked against the live
-  site** — do that first thing next session, or right after this deploys.
+  "Authorization failed" (not a crash).
+- Loading `https://cuerpo.coffee/keystatic` in a real Chrome tab (not just curl)
+  renders Keystatic's genuine "Log in with GitHub" screen. One console
+  `[EXCEPTION] Object` appears on every load — traced via network requests to a
+  single `POST /api/keystatic/github/refresh-token` returning 401, which is
+  Keystatic's own "am I already signed in" check logging its (expected) failure
+  when there's no session yet. Benign, not a bug; expect it on every logged-out
+  visit.
 
-**Not yet done:** an actual completed GitHub sign-in on the live site (only the
-redirect and callback plumbing have been checked, not a full successful round-trip
-with a real authorization).
+**Not yet done:** an actual completed GitHub sign-in — only the redirect and
+callback plumbing have been verified, not a full round-trip with real
+authorization, since that requires the owner's own GitHub session and clicking
+through personally.
 
 **Next up (Phase 2, remaining):** real Kit form wiring in `EmailCapture`,
 `/subscribe` landing page (and restore the header's third link), Cloudflare Web
