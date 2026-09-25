@@ -154,13 +154,35 @@ How it's actually wired:
   HTTP status code and HTML shell loaded, not that the React app inside it rendered
   correctly post-redirect. Lesson: for anything with client-side routing, check what
   actually renders in a browser, not just the response code.
-- The OAuth app in use is a **classic GitHub OAuth App**, not a GitHub App — read
-  `@keystatic/core`'s OAuth handlers directly to confirm this is fine: both use the
-  identical `github.com/login/oauth/authorize` → `.../access_token` flow, and the
-  repo-reading/writing code has zero GitHub-App-installation-specific logic. A
-  GitHub App would scope access to just this repo instead of the OAuth App's
-  broader `repo` scope (access to every repo the account can reach) — a real but
-  low-severity gap worth knowing, not a functional blocker.
+- The OAuth app in use is a **classic GitHub OAuth App**, not a GitHub App. This
+  was checked twice, with two different, incomplete conclusions before the real
+  issue surfaced — worth recording exactly what went wrong each time:
+  - **First check:** confirmed the OAuth *exchange mechanics* were identical
+    (`github.com/login/oauth/authorize` → `.../access_token`) and that
+    Keystatic's repo-reading/writing code has zero GitHub-App-installation-specific
+    logic. True, but incomplete — it verified the plumbing shape, not whether the
+    resulting token would actually have working *write* permissions.
+  - **What that missed:** `@keystatic/core`'s `githubLogin()` never sets an OAuth
+    `scope` parameter on the authorize redirect at all — confirmed by reading its
+    source directly. That's a non-issue for a GitHub App, since a GitHub App's
+    write access comes from the app's own installation permissions, not from
+    OAuth scope. A classic OAuth App has no such mechanism: with no `scope`
+    requested, GitHub returns a token with **empty** scope. This surfaced as a
+    real failure once the owner tried to actually save an edit in Keystatic:
+    `createCommitOnBranch` requires `public_repo`, token had `['']`.
+  - **Fixed** in `worker/index.ts`: rather than reimplementing Keystatic's
+    login handler (which also manages `state`/cookie logic we don't want to
+    duplicate), the outgoing `Location` header on `github/login`'s redirect is
+    rewritten in place to add `scope=public_repo`. `public_repo`, not the
+    broader `repo` scope — confirmed via `gh repo view` that `cuerpo-coffee` is
+    public, and `repo` would also grant write access to every *private* repo on
+    this GitHub account, which nothing here needs.
+  - **Corrected takeaway:** a classic OAuth App works with Keystatic, but not
+    out of the box — it needs this one-line scope patch. A GitHub App wouldn't
+    need it (permissions come from its own installation config instead), which
+    is the real, single actual tradeoff between the two — not the "broader
+    access footprint" framing from the first check, which undersold it as a
+    minor scope difference rather than "doesn't write at all without a fix."
 - **Second gotcha, more expensive than the first:** after the routing fix above was
   pushed (and two more small commits after it), every single `/api/keystatic/*`
   route started throwing — including ones that had worked minutes earlier —
@@ -195,9 +217,19 @@ How it's actually wired:
   when there's no session yet. Benign, not a bug; expect it on every logged-out
   visit.
 
-**Keystatic GitHub sign-in: confirmed working end to end by the owner** — a real
-sign-in was completed successfully on the live site. Keystatic (part 1 of Phase 2)
-is done.
+**Keystatic GitHub sign-in and save: both confirmed working end to end by the
+owner**, in two stages. Sign-in alone worked first — that was real, but incomplete,
+since the "Status: fully wired" checks above (login redirect, callback error
+handling, browser sign-in screen) never actually exercised a write. Trying to
+**save an edit** immediately failed: `createCommitOnBranch` requires `public_repo`,
+token had empty scope (see the OAuth App entry above for the root cause and fix —
+missing `scope` param on the login redirect, now patched in `worker/index.ts`).
+After that fix deployed, the owner confirmed a real save succeeds too. Keystatic
+(part 1 of Phase 2) is genuinely done now — but the lesson from this and the
+`_redirects` incident earlier is the same: **"login works" and "the full write
+path works" are different claims, and only the second one means the feature is
+actually done.** For anything that both authenticates AND writes, verify the write,
+not just the auth.
 
 **Phase 2, part 2 (Kit subscribe): built and verified locally, not yet deployed.**
 Scope was deliberately narrowed by the owner from the plan's original lead-magnet

@@ -90,6 +90,32 @@ export default {
         secret: env.KEYSTATIC_SECRET,
       });
       const result = await handler(request);
+
+      // @keystatic/core's githubLogin() never sets an OAuth `scope` param on
+      // the GitHub authorize redirect it builds — confirmed by reading its
+      // source directly. That's fine for a GitHub App, where write access
+      // comes from the app's own installation permissions rather than OAuth
+      // scope, but this project uses a classic OAuth App, which gets back a
+      // token with NO scope at all unless one is explicitly requested —
+      // hence "createCommitOnBranch requires... public_repo... but your
+      // token has only been granted: ['']" once someone actually tries to
+      // save an edit. Patched here by rewriting the one outgoing redirect,
+      // rather than reimplementing any of Keystatic's own state/cookie
+      // logic. public_repo (not the broader repo scope) is correct and
+      // sufficient since cuerpo-coffee is a public repo (confirmed via
+      // `gh repo view`) — repo would also grant write access to every
+      // private repo on this GitHub account, which nothing here needs.
+      if (pathname === '/api/keystatic/github/login' && Array.isArray(result.headers)) {
+        const locationHeader = result.headers.find(
+          ([key]) => key.toLowerCase() === 'location'
+        );
+        if (locationHeader) {
+          const authorizeUrl = new URL(locationHeader[1]);
+          authorizeUrl.searchParams.set('scope', 'public_repo');
+          locationHeader[1] = authorizeUrl.toString();
+        }
+      }
+
       // Astro's tsconfig pulls in DOM lib types, whose Uint8Array generic
       // doesn't structurally match the one @keystatic/core's types use —
       // a type-checker-only mismatch, not a runtime one (BodyInit accepts
