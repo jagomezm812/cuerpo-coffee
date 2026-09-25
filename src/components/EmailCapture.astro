@@ -11,9 +11,8 @@ const {
 ---
 
 <section class="email-capture">
-  <h2>{heading}</h2>
-  <p>{body}</p>
-  <!-- Wired to Kit's hosted form endpoint in Phase 2. -->
+  {heading && <h2>{heading}</h2>}
+  {body && <p>{body}</p>}
   <form class="email-capture__form">
     <label for="email-capture-input" class="visually-hidden">Email address</label>
     <input
@@ -25,67 +24,61 @@ const {
     />
     <button type="submit">Subscribe</button>
   </form>
+  <p class="email-capture__message" hidden></p>
 </section>
 
-<style>
-  .email-capture {
-    background: var(--paper);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: var(--space-7) var(--space-5);
-    text-align: center;
-    max-width: 40rem;
-    margin-inline: auto;
+<script>
+  // Handles every .email-capture__form on the page, including ones that
+  // aren't Astro component instances — the mid-article placement is raw
+  // HTML injected by remark-inline-subscribe.mjs, sharing this same class
+  // structure so one script covers both. Astro dedupes this script across
+  // multiple EmailCapture instances on one page, so it ships once regardless
+  // of how many forms are present.
+  function initEmailCaptureForms() {
+    const forms = document.querySelectorAll<HTMLFormElement>('.email-capture__form');
+
+    forms.forEach((form) => {
+      if (form.dataset.emailCaptureBound) return;
+      form.dataset.emailCaptureBound = 'true';
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const input = form.querySelector<HTMLInputElement>('input[type="email"]');
+        const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+        const messageEl = form.parentElement?.querySelector<HTMLElement>('.email-capture__message');
+        const email = input?.value.trim() ?? '';
+
+        if (!email) return;
+        if (button) button.disabled = true;
+
+        try {
+          const response = await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+          const data = await response.json();
+
+          if (response.ok && data.ok) {
+            form.hidden = true;
+            if (messageEl) {
+              messageEl.hidden = false;
+              messageEl.textContent = "You're subscribed — thanks!";
+            }
+          } else {
+            throw new Error('subscribe failed');
+          }
+        } catch {
+          if (messageEl) {
+            messageEl.hidden = false;
+            messageEl.textContent = 'Something went wrong — please try again in a moment.';
+          }
+          if (button) button.disabled = false;
+        }
+      });
+    });
   }
 
-  .email-capture h2 {
-    font-size: var(--step-1);
-    margin-bottom: var(--space-3);
-  }
-
-  .email-capture p {
-    color: var(--muted);
-    margin-bottom: var(--space-5);
-  }
-
-  .email-capture__form {
-    display: flex;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .email-capture__form input {
-    flex: 1 1 16rem;
-    padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--crema);
-    color: var(--ink);
-  }
-
-  .email-capture__form button {
-    padding: var(--space-3) var(--space-5);
-    border: 1px solid var(--copper);
-    border-radius: var(--radius);
-    background: var(--copper);
-    color: var(--paper);
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 150ms ease;
-  }
-
-  .email-capture__form button:hover {
-    background: var(--espresso);
-    border-color: var(--espresso);
-  }
-
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-</style>
+  initEmailCaptureForms();
+</script>

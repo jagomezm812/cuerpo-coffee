@@ -1,0 +1,38 @@
+---
+import Base from '../layouts/Base.astro';
+import EmailCapture from '../components/EmailCapture.astro';
+---
+
+<Base
+  title="Subscribe"
+  description="Get one good coffee idea a week from Cuerpo Coffee: fundamentals and troubleshooting, no spam, no upsells."
+  bare
+>
+  <section class="container subscribe">
+    <h1>Subscribe</h1>
+    <p>
+      One email a week with a single, useful coffee idea — a fix for a
+      recurring problem, a fundamental worth understanding, or a method worth
+      trying. No spam, no upsells, and no more than one email a week.
+    </p>
+    <EmailCapture heading="" body="" />
+  </section>
+</Base>
+
+<style>
+  .subscribe {
+    padding-block: var(--space-9);
+    max-width: 40rem;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .subscribe h1 {
+    margin-bottom: var(--space-5);
+  }
+
+  .subscribe > p {
+    color: var(--espresso);
+    margin-bottom: var(--space-7);
+  }
+</style>
