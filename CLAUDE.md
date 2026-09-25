@@ -38,9 +38,15 @@ Cloudflare Pages — see Progress) · Kit (email) · Lemon Squeezy (payments, ph
   `cuerpo-coffee` Worker's Settings → Variables and secrets — except the ones that
   aren't actually sensitive (OAuth client ID, Kit form ID), which live in
   `wrangler.jsonc` instead so they survive every deploy (see Progress for why).
-- Out of scope: comments, accounts, search, dark mode, SSR, React/Vue/Svelte (React is
-  used for exactly one exception: the Keystatic admin UI, client:only, zero JS on public
-  pages — see Progress).
+- Out of scope: comments, accounts, search, dark mode, SSR, Vue/Svelte. React is
+  available project-wide, not just for Keystatic — the integration is installed and
+  configured specifically so future interactive features (a language switcher,
+  richer UI elements) can be built as React islands without bolting on the
+  framework later. This was a deliberate scope change (see Progress for when/why).
+  Each usage is still bound by the JS budget above: a React island must ship 0 KB
+  to any page that doesn't use it (Astro's partial hydration gives this for free —
+  confirmed still true as of this change, see Progress), and still needs a real
+  reason, per the JS-budget rule generally, not "because it's available now."
 
 ## Design
 Palette: --ink --espresso --muted --crema --paper --copper. Six colors, no more.
@@ -230,6 +236,26 @@ After that fix deployed, the owner confirmed a real save succeeds too. Keystatic
 path works" are different claims, and only the second one means the feature is
 actually done.** For anything that both authenticates AND writes, verify the write,
 not just the auth.
+
+**React formally scoped project-wide, not just Keystatic-admin.** Nothing new to
+install — `@astrojs/react`, `react`, `react-dom`, and their `@types/*` packages
+were already added when the Keystatic admin UI was built, and TypeScript was
+already fully configured (`tsconfig.json` extends `astro/tsconfigs/strict`,
+`@astrojs/check` installed). This request was purely a scope decision: the owner
+wants React available for future public-facing interactive features (a language
+switcher, richer UI elements were the examples given) without needing to bolt on
+the framework when that day comes, not a request tied to a specific feature yet.
+Updated the Hard rules above accordingly — this replaces the earlier
+Keystatic-only framing.
+Re-verified after the scope change (not just assumed from the earlier Keystatic
+work): `npm run build` and `astro check` both pass clean, and every public page —
+homepage, about, subscribe, articles index, all three articles, 404 — has zero
+external `<script src>` tags in the build output; only `/keystatic-app` references
+the React bundle. The 0 KB-on-unused-pages guarantee comes from Astro's partial
+hydration model (a React component only ships JS to pages that actually render
+it), not from anything specific to this project — so it'll hold automatically for
+whatever the first real public React island turns out to be, with no additional
+wiring needed beyond using the component.
 
 **Phase 2, part 2 (Kit subscribe): built and verified locally, not yet deployed.**
 Scope was deliberately narrowed by the owner from the plan's original lead-magnet
