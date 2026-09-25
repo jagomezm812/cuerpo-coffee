@@ -1,4 +1,15 @@
 ---
+export interface Props {
+  lang?: 'en' | 'es';
+  otherLangHref?: string;
+}
+
+const { lang = 'en', otherLangHref = lang === 'es' ? '/' : '/es/articles' } = Astro.props;
+
+function withSetLang(href: string, target: 'en' | 'es'): string {
+  return `${href}${href.includes('?') ? '&' : '?'}setlang=${target}`;
+}
+
 const year = new Date().getFullYear();
 ---
 
@@ -11,6 +22,23 @@ const year = new Date().getFullYear();
         <li><a href="/about">About</a></li>
       </ul>
     </nav>
+    <p class="site-footer__lang" aria-label="Language">
+      {
+        lang === 'en' ? (
+          <span aria-current="true">English</span>
+        ) : (
+          <a href={withSetLang(otherLangHref, 'en')}>English</a>
+        )
+      }
+      <span aria-hidden="true"> · </span>
+      {
+        lang === 'es' ? (
+          <span aria-current="true">Español</span>
+        ) : (
+          <a href={withSetLang(otherLangHref, 'es')}>Español</a>
+        )
+      }
+    </p>
   </div>
 </footer>
 
@@ -45,5 +73,24 @@ const year = new Date().getFullYear();
 
   .site-footer__links a:hover {
     color: var(--copper);
+  }
+
+  .site-footer__lang {
+    display: flex;
+    gap: var(--space-1);
+  }
+
+  .site-footer__lang a {
+    color: var(--muted);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  .site-footer__lang a:hover {
+    color: var(--copper);
+  }
+
+  .site-footer__lang span[aria-current] {
+    color: var(--espresso);
   }
 </style>

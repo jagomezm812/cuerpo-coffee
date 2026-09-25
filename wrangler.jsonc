@@ -11,15 +11,20 @@
     "directory": "./dist",
     "binding": "ASSETS",
     // Cloudflare serves a matching static asset directly by default,
-    // WITHOUT invoking the Worker's fetch() at all — confirmed the hard
-    // way: the worker/index.ts language-redirect check on "/" silently
-    // never ran, because "/" has a real matching asset (index.html) and
-    // every other custom route so far (/keystatic, /api/*) happened to
-    // have no matching asset, so this never surfaced before. Scoped
-    // narrowly to just "/" rather than true (which would route every
-    // single asset request through the Worker first, unnecessary overhead
-    // for paths with no custom logic).
-    "run_worker_first": ["/"]
+    // WITHOUT invoking the Worker's fetch() at all. First discovered
+    // scoped to "/" only (the language-redirect check there silently never
+    // ran). Widened to `true` (every request) after the footer's language
+    // switcher (?setlang=en|es, worker/index.ts) turned out to need the
+    // exact same treatment on EVERY page — confirmed directly: a request
+    // to /articles/some-slug?setlang=en was served straight from the
+    // matching static asset, dropping the query string and never touching
+    // the Worker, even with run_worker_first scoped to just "/". Since the
+    // switcher can be clicked from any page, there's no fixed path list to
+    // scope this to — every request needs to pass through the Worker
+    // first. The cost is one extra Worker invocation per static asset
+    // request; the Worker's own final fallback (env.ASSETS.fetch) still
+    // serves them normally.
+    "run_worker_first": true
   },
   // Plain (non-secret) vars only — `wrangler deploy` wipes any dashboard-set
   // plain-text vars on every deploy unless they're declared here, which bit

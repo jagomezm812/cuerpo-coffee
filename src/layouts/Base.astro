@@ -14,12 +14,13 @@ export interface Props {
     updatedDate?: Date;
   };
   bare?: boolean;
-  // Site chrome (this Header/Footer, and the language prompt below) stays
+  // Site chrome (Header/Footer nav labels, About, Subscribe) stays
   // English-only for now — only the Article layout ever passes lang="es"
-  // or a real spanishHref, for the one page type that actually has
-  // translated content.
+  // or a real otherLangHref, for the one page type that actually has
+  // translated content. Footer's language switcher and the language
+  // prompt both consume otherLangHref, just in different directions.
   lang?: 'en' | 'es';
-  spanishHref?: string;
+  otherLangHref?: string;
 }
 
 const {
@@ -29,8 +30,15 @@ const {
   articleMeta,
   bare = false,
   lang = 'en',
-  spanishHref = '/es/articles',
+  otherLangHref,
 } = Astro.props;
+
+// No Spanish homepage exists yet (chrome is English-only), so the default
+// Spanish target is the Spanish article index — the only page that's
+// actually meaningful in that direction. Explicit prop (set by Article.astro
+// via getTranslationHref, in either direction) overrides this whenever a
+// real per-article translation link applies.
+const resolvedOtherLangHref = otherLangHref ?? (lang === 'es' ? '/' : '/es/articles');
 ---
 
 <html lang={lang}>
@@ -42,7 +50,7 @@ const {
     <main>
       <slot />
     </main>
-    {!bare && <Footer />}
-    <LanguagePrompt client:idle currentLang={lang} spanishHref={spanishHref} />
+    {!bare && <Footer lang={lang} otherLangHref={resolvedOtherLangHref} />}
+    <LanguagePrompt client:idle currentLang={lang} spanishHref={resolvedOtherLangHref} />
   </body>
 </html>

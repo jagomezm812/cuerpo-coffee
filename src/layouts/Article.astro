@@ -31,7 +31,7 @@ const translationHref = await getTranslationHref(article);
   description={description}
   articleMeta={{ publishDate, updatedDate }}
   lang={lang}
-  spanishHref={lang === 'en' ? (translationHref ?? '/es/articles') : undefined}
+  otherLangHref={translationHref}
 >
   <article class="container article">
     <header class="article__header">

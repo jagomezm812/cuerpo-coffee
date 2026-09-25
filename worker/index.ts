@@ -74,17 +74,51 @@ async function handleSubscribe(request: Request, env: Env): Promise<Response> {
   });
 }
 
+const LANG_COOKIE_NAME = 'cuerpo_lang';
+const LANG_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+
 function getLangCookie(request: Request): string | undefined {
   return request.headers
     .get('cookie')
     ?.split('; ')
-    .find((row) => row.startsWith('cuerpo_lang='))
+    .find((row) => row.startsWith(`${LANG_COOKIE_NAME}=`))
     ?.split('=')[1];
+}
+
+function buildLangCookie(value: 'en' | 'es'): string {
+  return `${LANG_COOKIE_NAME}=${value}; max-age=${LANG_COOKIE_MAX_AGE}; path=/; SameSite=Lax`;
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const { pathname } = new URL(request.url);
+    const url = new URL(request.url);
+    const { pathname } = url;
+
+    // Persistent language switcher (Footer.astro) — a plain link to the
+    // current page with ?setlang=en|es appended, so this needs no client
+    // JS at all. Answers the escape-hatch gap the first-visit prompt alone
+    // left: once cuerpo_lang=es is set, there was no way back to English
+    // short of clearing cookies, since the "/" redirect below would just
+    // send a visitor straight back to /es/articles.
+    // This redirects to the clean URL (query stripped) rather than
+    // fetching-and-patching the response in place, specifically so the
+    // BROWSER's next request already carries the new cookie value — if we
+    // instead served the target content directly in this same response,
+    // the "/" redirect check below would still see the OLD cookie (Set-
+    // Cookie on a response doesn't retroactively change the request that's
+    // already being handled) and could immediately redirect the visitor
+    // right back to where they just asked to leave.
+    const setLang = url.searchParams.get('setlang');
+    if (setLang === 'en' || setLang === 'es') {
+      url.searchParams.delete('setlang');
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: url.toString(),
+          'Set-Cookie': buildLangCookie(setLang),
+        },
+      });
+    }
 
     // Returning-visitor language redirect: the LanguagePrompt React island
     // (src/components/LanguagePrompt.tsx) sets a cuerpo_lang cookie on
@@ -96,6 +130,11 @@ export default {
     // client JS for every page on every return visit — the island itself
     // is only responsible for the first-visit prompt and setting the
     // cookie, not for repeat-visit routing.
+    // Target is /es/articles specifically because there is currently no
+    // Spanish homepage — site chrome (header, hero, About, Subscribe)
+    // stays English-only by design, so the Spanish article index is the
+    // only page on the site that's actually meaningful in Spanish. Revisit
+    // this target if/when chrome ever gets translated.
     if (pathname === '/' && getLangCookie(request) === 'es') {
       return Response.redirect(new URL('/es/articles', request.url), 307);
     }

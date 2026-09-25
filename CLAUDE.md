@@ -26,10 +26,13 @@ Cloudflare Pages — see Progress) · Kit (email) · Lemon Squeezy (payments, ph
 ## Hard rules
 - Static output only, with narrow exceptions in `worker/index.ts`: Keystatic's
   GitHub OAuth calls, proxying the subscribe form to Kit's API so the real API
-  key never reaches the browser, and a cookie-based redirect on `/` for
-  returning visitors with a Spanish language preference (see Progress on i18n —
-  this last one needed `assets.run_worker_first` in `wrangler.jsonc`, since a
-  path with a matching static file bypasses the Worker by default). No other
+  key never reaches the browser, a cookie-based redirect on `/` for returning
+  visitors with a Spanish language preference, and the `?setlang=en|es` footer
+  language switcher (see Progress on i18n). `wrangler.jsonc` has
+  `assets.run_worker_first: true` — every request goes through the Worker
+  first — because a path with a matching static file otherwise bypasses the
+  Worker entirely by default, which silently broke both of the above at
+  different points before this was widened from a narrower path list. No other
   server code, no database.
 - No client-side JS unless a feature truly requires it. JS budget: 20 KB per
   article page. (The Keystatic admin UI at /keystatic is exempt — it's a CMS
@@ -436,22 +439,33 @@ under 1 KB, same UX).
   translation of the current article if one exists (via `getTranslationHref()`),
   falling back to `/es/articles` (the Spanish index) otherwise — confirmed this
   distinction actually works in a real browser test, not just in the props.
-- **Worker-side redirect gotcha, found the hard way:** the `/` → `/es/articles`
-  redirect for returning `cuerpo_lang=es` visitors silently never fired at first.
-  Root cause, confirmed against Cloudflare's own docs: **a Cloudflare Worker with
-  static assets serves a matching static file directly by default, without
-  invoking the Worker's `fetch()` at all** — this only became visible now because
-  every prior custom route (`/api/keystatic/*`, `/api/subscribe`, `/keystatic`)
-  happened to have *no* matching static file, so they always fell through to the
-  Worker by coincidence, not by any explicit configuration. `/` has a real
-  matching file (`index.html`), so it was served directly, bypassing the
-  redirect check entirely. **Fixed** via `wrangler.jsonc`'s
-  `assets.run_worker_first: ["/"]` — scoped to just the one path that needs it,
-  not `true` globally (which would route every single asset request through the
-  Worker unnecessarily). Any *future* Worker-side logic targeting a path that
-  also happens to have a matching static file will need the same treatment added
-  to that array — this is easy to silently get wrong again, since it fails
-  silent (200, not an error) rather than loud.
+- **Worker-side redirect gotcha, found the hard way, twice:** the `/` →
+  `/es/articles` redirect for returning `cuerpo_lang=es` visitors silently never
+  fired at first. Root cause, confirmed against Cloudflare's own docs: **a
+  Cloudflare Worker with static assets serves a matching static file directly by
+  default, without invoking the Worker's `fetch()` at all** — this only became
+  visible now because every prior custom route (`/api/keystatic/*`,
+  `/api/subscribe`, `/keystatic`) happened to have *no* matching static file, so
+  they always fell through to the Worker by coincidence, not by any explicit
+  configuration. `/` has a real matching file (`index.html`), so it was served
+  directly, bypassing the redirect check entirely. First fix:
+  `assets.run_worker_first: ["/"]`, scoped narrowly.
+  **That scoping turned out to be wrong once the language switcher (below) was
+  added** — a `?setlang=` link can point at *any* page (any article, any
+  category, the homepage), and every one of those has a matching static asset
+  too, so the same bypass silently ate the `setlang` query string on every path
+  except `/`. Confirmed directly: `curl` on `/articles/some-slug?setlang=en`
+  came back with no `Set-Cookie` at all and the query string just dropped —
+  served straight from the asset, never reaching the Worker. Since there's no
+  fixed list of paths to scope this to (the switcher is sitewide), fixed for
+  real this time with `assets.run_worker_first: true` — every request now goes
+  through the Worker first, falling through to `env.ASSETS.fetch()` unchanged
+  for anything with no special routing. Re-verified after widening it that
+  trailing-slash normalization (e.g. `/articles/some-slug` → `.../some-slug/`)
+  still works correctly through that fallback path, not just before the change.
+  **Lesson, worth remembering for any future Worker logic:** this failure mode
+  is silent — a normal 200, not an error — so it's easy to ship broken and not
+  notice without testing the exact cookie/query-param scenario end to end.
 - CSS added unscoped to `src/styles/global.css` (a React component has no access
   to Astro's scoped `<style>` blocks) — first draft used a `box-shadow` for
   visual separation, caught and removed before committing since it violates this
@@ -465,6 +479,49 @@ under 1 KB, same UX).
   testing — traced and confirmed to be noise from an unrelated third-party
   browser extension in this testing session (it fires identically on
   `example.com`, a page with zero JS of its own), not a real bug.
+
+**Persistent language switcher (Footer), added after a real gap the owner found
+by testing:** once `cuerpo_lang=es` was set, there was no way back to English at
+all short of manually clearing cookies — clicking the logo/home link just landed
+back on `/es/articles` via the returning-visitor redirect, with nothing on the
+page offering a way out. The one-time prompt alone wasn't sufficient; a
+persistent escape hatch was missing.
+- `Footer.astro` now renders "English · Español" (small text, right side of the
+  footer row) on every non-bare page. The current language is plain text; the
+  other one is a real link. This is a language-name label pair, not a
+  translated UI string, so it doesn't conflict with the "chrome stays
+  English-only for now" decision.
+- **Deliberately zero client JS** — no new React island, no vanilla JS either.
+  The link is a plain `<a href="...?setlang=en|es">`; `worker/index.ts` reads
+  `?setlang` as an early check, strips it, and responds with a 302 + `Set-Cookie`
+  to the clean URL. The redirect (rather than serving the target content
+  directly in the same response) is deliberate: it forces the *next* request to
+  carry the new cookie value before any other routing logic (like the `/`
+  redirect above) runs — patching the response in place would leave the
+  same-request's `/` check still seeing the OLD cookie, since a `Set-Cookie`
+  header doesn't retroactively change the request currently being handled.
+  Confirmed this ordering matters by testing the exact failure scenario
+  directly (an `es` cookie, clicking through to `/?setlang=en`) before and
+  after using the redirect approach.
+- Uses the same `otherLangHref` value in both directions: `Article.astro`
+  computes it once via `getTranslationHref()` (already bidirectional — returns
+  the English original's URL when called on a Spanish entry, or the Spanish
+  translation's URL when called on an English one) and passes it straight
+  through; `Base.astro` supplies the `/`-or-`/es/articles` default when no
+  specific translation applies. `LanguagePrompt` and `Footer` both consume this
+  one resolved value, just in whichever direction is relevant to each.
+- **The `/` → `/es/articles` redirect target was checked, not just assumed
+  fine:** confirmed intentional, not an accident of the routing — there's
+  currently no Spanish homepage since site chrome stays English-only, so the
+  Spanish article index is the only page on the site that's actually meaningful
+  in that direction. Worth revisiting only if/when chrome gets translated.
+- Verified end-to-end via direct HTTP tests reproducing the exact reported bug:
+  `cuerpo_lang=es` cookie + `GET /?setlang=en` → `302` with `Set-Cookie:
+  cuerpo_lang=en` → following that to a clean `/` request with the new cookie
+  now returns a real `200` (the actual English homepage), not a bounce back to
+  `/es/articles`. Also re-ran the full existing regression set (Keystatic,
+  OAuth scope, subscribe, the original `/` redirect) under the widened
+  `run_worker_first: true` to confirm nothing else broke.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;
