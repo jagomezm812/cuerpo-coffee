@@ -24,14 +24,22 @@ Cloudflare Workers (static assets + a git-connected Worker named `cuerpo-coffee`
 Cloudflare Pages — see Progress) · Kit (email) · Lemon Squeezy (payments, phase 4)
 
 ## Hard rules
-- Static output only, with two narrow exceptions in `worker/index.ts`: Keystatic's
-  GitHub OAuth calls, and proxying the subscribe form to Kit's API so the real API
-  key never reaches the browser (see Progress). No other server code, no database.
-- No client-side JS unless a feature truly requires it. JS budget: 20 KB per article page.
-  (The Keystatic admin UI at /keystatic is exempt — it's a CMS tool, not a public page,
-  and is noindex'd and robots-disallowed. The EmailCapture inline-confirmation script
-  counts against the budget and is verified well under it — ~820 bytes, inlined, no
-  separate request.)
+- Static output only, with narrow exceptions in `worker/index.ts`: Keystatic's
+  GitHub OAuth calls, proxying the subscribe form to Kit's API so the real API
+  key never reaches the browser, and a cookie-based redirect on `/` for
+  returning visitors with a Spanish language preference (see Progress on i18n —
+  this last one needed `assets.run_worker_first` in `wrangler.jsonc`, since a
+  path with a matching static file bypasses the Worker by default). No other
+  server code, no database.
+- No client-side JS unless a feature truly requires it. JS budget: 20 KB per
+  article page. (The Keystatic admin UI at /keystatic is exempt — it's a CMS
+  tool, not a public page, and is noindex'd and robots-disallowed. The
+  EmailCapture inline-confirmation script counts against the budget and is
+  verified well under it — ~820 bytes, inlined, no separate request. The
+  LanguagePrompt React island is the one deliberate, informed exception to the
+  budget itself — ~70 KB gzip, measured and shown to the owner before they
+  chose to accept it specifically to exercise React end-to-end, not because
+  the feature needed React — see Progress.)
 - No Tailwind. All design values come from src/styles/tokens.css.
 - No new dependencies without stating the cost and the alternative.
 - Never commit secrets. Environment variables live in the Cloudflare dashboard, on the
@@ -39,14 +47,10 @@ Cloudflare Pages — see Progress) · Kit (email) · Lemon Squeezy (payments, ph
   aren't actually sensitive (OAuth client ID, Kit form ID), which live in
   `wrangler.jsonc` instead so they survive every deploy (see Progress for why).
 - Out of scope: comments, accounts, search, dark mode, SSR, Vue/Svelte. React is
-  available project-wide, not just for Keystatic — the integration is installed and
-  configured specifically so future interactive features (a language switcher,
-  richer UI elements) can be built as React islands without bolting on the
-  framework later. This was a deliberate scope change (see Progress for when/why).
-  Each usage is still bound by the JS budget above: a React island must ship 0 KB
-  to any page that doesn't use it (Astro's partial hydration gives this for free —
-  confirmed still true as of this change, see Progress), and still needs a real
-  reason, per the JS-budget rule generally, not "because it's available now."
+  available project-wide, not just for Keystatic, and is now actually in use for
+  a real public feature (the language preference prompt — see Progress on i18n).
+  Each usage is still bound by the JS budget above and still needs a real
+  reason, not "because it's available."
 
 ## Design
 Palette: --ink --espresso --muted --crema --paper --copper. Six colors, no more.
@@ -325,10 +329,146 @@ How it's wired:
   malformed JSON (400), wrong HTTP method (405), and malformed email (400); the
   build output shows exactly two `.email-capture` blocks on every article page
   (mid + end) and one each on the homepage and `/subscribe`, none on `/about`.
-  **Not yet verified:** an actual live subscribe with a real Kit API key — that
-  needs the owner to add `KIT_API_KEY` as a Cloudflare dashboard Secret first (not
-  yet done as of this session), then this needs deploying and testing for real.
+  **Confirmed live**: `KIT_API_KEY` was added as a dashboard Secret, and a real
+  test subscribe against the live site returned `{"ok":true}` — both the
+  create-subscriber and add-to-form calls succeeded against the real Kit API.
+
+## Phase 2, part 3: English/Spanish i18n
+
+**Status: built, verified locally end-to-end, not yet deployed.** Full plan was
+proposed and approved by the owner before any code was written (routing strategy,
+content model, Keystatic schema, and the language-prompt storage mechanism were
+all explicit decision points). Scope: article translation lags behind English
+publishing over time; site chrome (Header/Footer nav labels, About, Subscribe,
+"Related"/"Articles" heading strings) stays English-only for now, by the owner's
+explicit choice — revisit once articles are actually being translated in volume.
+
+**Routing:** `astro.config.mjs`'s `i18n` config —
+`locales: ['en','es']`, `defaultLocale: 'en'`, `routing.prefixDefaultLocale: false`.
+English stays fully unprefixed (zero disruption to already-published URLs);
+Spanish lives under `/es/`. This was the owner's explicit choice over the
+alternative (symmetric `/en/`+`/es/`, one shared route file) specifically to avoid
+disrupting existing URLs — the cost is a parallel, thin route tree under
+`src/pages/es/articles/` (index, `category/[category]`, `[...slug]`), each just
+calling the same shared query helpers in `src/lib/articles.ts` as their English
+counterparts, so there's still one source of truth for the actual query/sort logic
+even though the routing files themselves are duplicated.
+**Verified directly, not just documented from the config:** Astro's own
+`i18n.fallback`/`fallbackType` auto-translate-fallback feature does **not** apply
+to `getStaticPaths()`-driven content collection routes (confirmed absent from
+Astro's own docs on this) — it's a plain-file-in-locale-folder feature only. So
+there is no automatic fallback machinery for articles here; the actual behavior
+(see below) is hand-built in `src/lib/articles.ts` and the route files, and is
+simpler than a fallback system would have been.
+
+**Content model:** one `articles` collection (not two), two new fields in
+`src/content.config.ts`:
+- `lang: z.enum(['en','es']).default('en')` — the three pre-existing English
+  articles needed **zero migration**, since the default covers them.
+- `translationKey: reference('articles').optional()` — only set on a Spanish
+  entry, pointing at the `id` (slug) of the English article it translates. Using
+  Astro's `reference()` rather than a plain string gives a real foreign-key
+  check: the build fails loudly if it points at a slug that doesn't exist,
+  consistent with this schema's existing fail-loudly philosophy (same spirit as
+  the `heroAlt`-requires-`heroImage` refinement). Confirmed this actually works
+  end-to-end via a real build with a real linked pair, not just by reading the
+  type — `reference()`'s types are dynamically generated (stubbed as `any` in
+  Astro's own shipped `.d.ts`), so this needed empirical verification, not just
+  reading docs.
+- Spanish articles get their own natural Spanish slugs/filenames (not the English
+  slug reused) — better for Spanish-language SEO, and it's `translationKey` that
+  links the pair, not filename matching.
+- Untranslated behavior, and it's important this needed no fallback machinery at
+  all: `getPublishedArticles('es')` (in `src/lib/articles.ts`) only returns
+  entries with `lang: 'es'`, so an untranslated article simply never generates a
+  Spanish route and never appears in the Spanish index — no dead links, no
+  partial-language reading experience to design around. A "Leer en español" /
+  "Read in English" cross-link (in `src/layouts/Article.astro`, via
+  `getTranslationHref()`) only renders when a real translation exists on either
+  side.
+- One real, non-filler translated seed article exists for verification:
+  `src/content/articles/por-que-tu-cafe-sabe-acido.md` (`lang: es`,
+  `translationKey: why-your-coffee-tastes-sour`) — a genuine translation of the
+  existing English article, not placeholder text, so the whole pipeline
+  (routing, cross-linking, category filtering, the language prompt's redirect
+  target) could be verified against something real rather than a stub.
+
+**Keystatic schema:** same two fields added to the one `articles` collection in
+`keystatic.config.ts` — `lang` as `fields.select` (English/Español), and
+`translationKey` as `fields.relationship({ collection: 'articles' })`, i.e. a
+collection referencing itself. Confirmed structurally supported by reading
+`@keystatic/core`'s own relationship-field types directly (`collection` is a
+plain string key, not type-restricted against self-reference) — **not yet
+smoke-tested live in the Keystatic UI** (e.g. whether the picker correctly
+excludes the entry currently being edited from its own options list). Do that
+before relying on it for a real translation workflow.
+**Known small gap, not fixed:** Keystatic's `previewUrl` is a flat string
+template (`/articles/{slug}`) with no way to branch on the `lang` field, so a
+Spanish article's "Preview" button in Keystatic points at the wrong (English-style,
+nonexistent) URL. Left as-is and commented in the config; not worth a broken
+workaround for a minor convenience button.
+
+**Language preference prompt:** `src/components/LanguagePrompt.tsx`, a React
+island (`client:idle`, mounted once in `Base.astro` so it's present on every
+page). This was a deliberate, informed scope choice, not an oversight: I measured
+the actual cost first (React's shared runtime + this component: **~70 KB gzip**,
+confirmed via the real build output — `client.js` ~65KB + `react.js` ~3.5KB +
+`react-dom.js` ~1.4KB + the component itself ~0.6KB) and gave the owner that
+number before they decided; they chose to accept the cost specifically to
+exercise the React/TypeScript infrastructure end-to-end on a real public page,
+not because the feature itself needed React (a vanilla-JS version would have cost
+under 1 KB, same UX).
+- **Storage: a `cuerpo_lang` cookie, not localStorage** — a deliberate
+  architecture choice, not a coin flip: because the Worker already runs on every
+  request, a cookie lets *it* (not client JS) handle the returning-visitor
+  redirect. Per the owner's explicit instruction, the React island's job is
+  strictly limited to the first-visit prompt UI and setting the cookie — the
+  redirect-on-return logic lives entirely in `worker/index.ts`, not in any
+  client JS, even though the prompt itself is now a React component.
+- The island only ever renders on English pages (`currentLang !== 'en'` bails out
+  immediately) — a first visit landing directly on a Spanish article is already
+  reading Spanish, so there's nothing to offer it; this sidesteps needing
+  bilingual prompt copy entirely.
+- Dismissing any way — the × button, "Continue in English," or clicking away —
+  all resolve to setting the cookie to `en`, satisfying "defaults to English if
+  dismissed or ignored" without needing timeout/inactivity detection.
+- "Español" sets the cookie to `es` and navigates to the *specific* Spanish
+  translation of the current article if one exists (via `getTranslationHref()`),
+  falling back to `/es/articles` (the Spanish index) otherwise — confirmed this
+  distinction actually works in a real browser test, not just in the props.
+- **Worker-side redirect gotcha, found the hard way:** the `/` → `/es/articles`
+  redirect for returning `cuerpo_lang=es` visitors silently never fired at first.
+  Root cause, confirmed against Cloudflare's own docs: **a Cloudflare Worker with
+  static assets serves a matching static file directly by default, without
+  invoking the Worker's `fetch()` at all** — this only became visible now because
+  every prior custom route (`/api/keystatic/*`, `/api/subscribe`, `/keystatic`)
+  happened to have *no* matching static file, so they always fell through to the
+  Worker by coincidence, not by any explicit configuration. `/` has a real
+  matching file (`index.html`), so it was served directly, bypassing the
+  redirect check entirely. **Fixed** via `wrangler.jsonc`'s
+  `assets.run_worker_first: ["/"]` — scoped to just the one path that needs it,
+  not `true` globally (which would route every single asset request through the
+  Worker unnecessarily). Any *future* Worker-side logic targeting a path that
+  also happens to have a matching static file will need the same treatment added
+  to that array — this is easy to silently get wrong again, since it fails
+  silent (200, not an error) rather than loud.
+- CSS added unscoped to `src/styles/global.css` (a React component has no access
+  to Astro's scoped `<style>` blocks) — first draft used a `box-shadow` for
+  visual separation, caught and removed before committing since it violates this
+  project's explicit "no shadows" design rule; a `border: 1px solid --espresso`
+  does the same job within the palette.
+- Verified in a real Chrome browser, not just via curl: the prompt renders
+  correctly on first visit, "Español" navigates to the exact translated article
+  (not just the generic index) and hides the prompt going forward, and a
+  follow-up visit to a *different* English article correctly shows no prompt
+  (cookie already set). One console `[EXCEPTION] Object` appeared during
+  testing — traced and confirmed to be noise from an unrelated third-party
+  browser extension in this testing session (it fires identically on
+  `example.com`, a page with zero JS of its own), not a real bug.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
-(`@astrojs/sitemap` — next new dependency, build-time only, no client cost),
-build-time OG image generation.
+(`@astrojs/sitemap` — next new dependency, build-time only, no client cost;
+worth checking its own i18n-awareness when this is picked up), build-time OG
+image generation. For i18n specifically: smoke-test the Keystatic
+`translationKey` relationship picker live: consider `hreflang` alternate tags
+for SEO (not built this pass — flagged as a good idea, not yet approved/scoped).

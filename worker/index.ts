@@ -74,9 +74,31 @@ async function handleSubscribe(request: Request, env: Env): Promise<Response> {
   });
 }
 
+function getLangCookie(request: Request): string | undefined {
+  return request.headers
+    .get('cookie')
+    ?.split('; ')
+    .find((row) => row.startsWith('cuerpo_lang='))
+    ?.split('=')[1];
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
+
+    // Returning-visitor language redirect: the LanguagePrompt React island
+    // (src/components/LanguagePrompt.tsx) sets a cuerpo_lang cookie on
+    // first visit. This is the only place that cookie is read server-side
+    // — deliberately scoped to the bare homepage only, not every route.
+    // A bookmarked or shared article link should always open the article
+    // that was linked, regardless of language preference; only the site's
+    // generic entry point adapts to it. Doing this here means zero added
+    // client JS for every page on every return visit — the island itself
+    // is only responsible for the first-visit prompt and setting the
+    // cookie, not for repeat-visit routing.
+    if (pathname === '/' && getLangCookie(request) === 'es') {
+      return Response.redirect(new URL('/es/articles', request.url), 307);
+    }
 
     if (pathname === '/api/subscribe') {
       return handleSubscribe(request, env);

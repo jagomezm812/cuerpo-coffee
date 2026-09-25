@@ -1,10 +1,10 @@
 ---
 import { render } from 'astro:content';
-import Article from '../../layouts/Article.astro';
-import { getPublishedArticles } from '../../lib/articles';
+import Article from '../../../layouts/Article.astro';
+import { getPublishedArticles } from '../../../lib/articles';
 
 export async function getStaticPaths() {
-  const articles = await getPublishedArticles('en');
+  const articles = await getPublishedArticles('es');
   return articles.map((article) => ({
     params: { slug: article.id },
     props: { article },
@@ -14,7 +14,7 @@ export async function getStaticPaths() {
 const { article } = Astro.props;
 const { Content } = await render(article);
 
-const allArticles = await getPublishedArticles('en');
+const allArticles = await getPublishedArticles('es');
 const relatedArticles = allArticles
   .filter((a) => a.id !== article.id && a.data.category === article.data.category)
   .slice(0, 2);

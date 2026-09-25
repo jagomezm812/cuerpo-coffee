@@ -1,28 +1,38 @@
 ---
-import Base from '../../layouts/Base.astro';
-import ArticleCard from '../../components/ArticleCard.astro';
-import { getPublishedArticles, getCategoryHref } from '../../lib/articles';
+import Base from '../../../layouts/Base.astro';
+import ArticleCard from '../../../components/ArticleCard.astro';
+import { getPublishedArticles, getCategoryHref } from '../../../lib/articles';
 
 const categories = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing'] as const;
-const articles = await getPublishedArticles('en');
+const articles = await getPublishedArticles('es');
 ---
 
-<Base title="Articles" description="Every Cuerpo Coffee article, newest first.">
+<Base
+  title="Articles"
+  description="Every Cuerpo Coffee article available in Spanish, newest first."
+  lang="es"
+>
   <section class="container articles-page">
     <header class="articles-page__header">
       <h1>Articles</h1>
       <nav aria-label="Filter by category" class="articles-page__filters">
         {
           categories.map((category) => (
-            <a href={getCategoryHref('en', category)}>{category}</a>
+            <a href={getCategoryHref('es', category)}>{category}</a>
           ))
         }
       </nav>
     </header>
 
-    <div class="articles-page__list">
-      {articles.map((article) => <ArticleCard article={article} />)}
-    </div>
+    {
+      articles.length > 0 ? (
+        <div class="articles-page__list">
+          {articles.map((article) => <ArticleCard article={article} />)}
+        </div>
+      ) : (
+        <p>Translated articles are on the way — check back soon.</p>
+      )
+    }
   </section>
 </Base>
 

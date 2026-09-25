@@ -1,13 +1,14 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import { getArticleHref } from '../lib/articles';
 
 export interface Props {
   article: CollectionEntry<'articles'>;
 }
 
 const { article } = Astro.props;
-const { title, description, category, publishDate } = article.data;
-const formattedDate = publishDate.toLocaleDateString('en-US', {
+const { title, description, category, publishDate, lang } = article.data;
+const formattedDate = publishDate.toLocaleDateString(lang === 'es' ? 'es' : 'en-US', {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
@@ -22,7 +23,7 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
     <time datetime={publishDate.toISOString()}>{formattedDate}</time>
   </p>
   <h3>
-    <a href={`/articles/${article.id}`}>{title}</a>
+    <a href={getArticleHref(article)}>{title}</a>
   </h3>
   <p class="article-card__description">{description}</p>
 </article>

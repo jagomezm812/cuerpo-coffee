@@ -1,4 +1,4 @@
-import { defineCollection } from 'astro:content';
+import { defineCollection, reference } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
 
@@ -17,6 +17,13 @@ const articles = defineCollection({
         heroAlt: z.string().optional(),
         draft: z.boolean().default(false),
         featured: z.boolean().default(false),
+        lang: z.enum(['en', 'es']).default('en'),
+        // Only set on a non-English entry: the id (slug) of the English
+        // article it translates. reference('articles') makes this a real
+        // foreign-key check — the build fails loudly if it points at a
+        // slug that doesn't exist, consistent with this schema's existing
+        // "fail loudly, don't skip silently" rule for heroAlt.
+        translationKey: reference('articles').optional(),
       })
       .refine((data) => !data.heroImage || !!data.heroAlt, {
         message: 'heroAlt is required when heroImage is set',

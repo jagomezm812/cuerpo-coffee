@@ -5,6 +5,7 @@ import Prose from '../components/Prose.astro';
 import ArticleCard from '../components/ArticleCard.astro';
 import EmailCapture from '../components/EmailCapture.astro';
 import { Image } from 'astro:assets';
+import { getTranslationHref } from '../lib/articles';
 
 export interface Props {
   article: CollectionEntry<'articles'>;
@@ -13,17 +14,25 @@ export interface Props {
 }
 
 const { article, readingTimeMinutes, relatedArticles } = Astro.props;
-const { title, description, publishDate, updatedDate, heroImage, heroAlt } = article.data;
+const { title, description, publishDate, updatedDate, heroImage, heroAlt, lang } = article.data;
 
-const formattedDate = publishDate.toLocaleDateString('en-US', {
+const formattedDate = publishDate.toLocaleDateString(lang === 'es' ? 'es' : 'en-US', {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
   timeZone: 'UTC',
 });
+
+const translationHref = await getTranslationHref(article);
 ---
 
-<Base title={title} description={description} articleMeta={{ publishDate, updatedDate }}>
+<Base
+  title={title}
+  description={description}
+  articleMeta={{ publishDate, updatedDate }}
+  lang={lang}
+  spanishHref={lang === 'en' ? (translationHref ?? '/es/articles') : undefined}
+>
   <article class="container article">
     <header class="article__header">
       <h1>{title}</h1>
@@ -32,6 +41,14 @@ const formattedDate = publishDate.toLocaleDateString('en-US', {
         <time datetime={publishDate.toISOString()}>{formattedDate}</time>
         <span aria-hidden="true">·</span>
         <span>{readingTimeMinutes} min read</span>
+        {
+          translationHref && (
+            <>
+              <span aria-hidden="true">·</span>
+              <a href={translationHref}>{lang === 'es' ? 'Read in English' : 'Leer en español'}</a>
+            </>
+          )
+        }
       </p>
     </header>
 

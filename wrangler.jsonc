@@ -9,7 +9,17 @@
     // Worker's own routing in worker/index.ts is served from here,
     // including public/robots.txt as-is.
     "directory": "./dist",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    // Cloudflare serves a matching static asset directly by default,
+    // WITHOUT invoking the Worker's fetch() at all — confirmed the hard
+    // way: the worker/index.ts language-redirect check on "/" silently
+    // never ran, because "/" has a real matching asset (index.html) and
+    // every other custom route so far (/keystatic, /api/*) happened to
+    // have no matching asset, so this never surfaced before. Scoped
+    // narrowly to just "/" rather than true (which would route every
+    // single asset request through the Worker first, unnecessary overhead
+    // for paths with no custom logic).
+    "run_worker_first": ["/"]
   },
   // Plain (non-secret) vars only — `wrangler deploy` wipes any dashboard-set
   // plain-text vars on every deploy unless they're declared here, which bit

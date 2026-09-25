@@ -2,6 +2,7 @@
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import LanguagePrompt from '../components/LanguagePrompt';
 import '../styles/global.css';
 
 export interface Props {
@@ -13,12 +14,26 @@ export interface Props {
     updatedDate?: Date;
   };
   bare?: boolean;
+  // Site chrome (this Header/Footer, and the language prompt below) stays
+  // English-only for now — only the Article layout ever passes lang="es"
+  // or a real spanishHref, for the one page type that actually has
+  // translated content.
+  lang?: 'en' | 'es';
+  spanishHref?: string;
 }
 
-const { title, description, image, articleMeta, bare = false } = Astro.props;
+const {
+  title,
+  description,
+  image,
+  articleMeta,
+  bare = false,
+  lang = 'en',
+  spanishHref = '/es/articles',
+} = Astro.props;
 ---
 
-<html lang="en">
+<html lang={lang}>
   <head>
     <BaseHead title={title} description={description} image={image} articleMeta={articleMeta} />
   </head>
@@ -28,5 +43,6 @@ const { title, description, image, articleMeta, bare = false } = Astro.props;
       <slot />
     </main>
     {!bare && <Footer />}
+    <LanguagePrompt client:idle currentLang={lang} spanishHref={spanishHref} />
   </body>
 </html>

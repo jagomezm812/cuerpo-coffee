@@ -8,6 +8,11 @@ const CATEGORY_OPTIONS = [
   { label: 'Sourcing', value: 'sourcing' },
 ] as const;
 
+const LANG_OPTIONS = [
+  { label: 'English', value: 'en' },
+  { label: 'Español', value: 'es' },
+] as const;
+
 export default config({
   storage: {
     kind: 'github',
@@ -19,8 +24,12 @@ export default config({
       slugField: 'title',
       path: 'src/content/articles/*',
       format: { contentField: 'content' },
+      // Always points at the English URL shape — Keystatic's previewUrl is a
+      // flat string template with no way to branch on the lang field, so
+      // this is wrong for Spanish entries (known gap, not fixable cleanly;
+      // their real URL is /es/articles/{slug}).
       previewUrl: '/articles/{slug}',
-      columns: ['title', 'category', 'publishDate', 'draft', 'featured'],
+      columns: ['title', 'lang', 'category', 'publishDate', 'draft', 'featured'],
       schema: {
         title: fields.slug({
           name: {
@@ -46,6 +55,18 @@ export default config({
           label: 'Category',
           options: CATEGORY_OPTIONS,
           defaultValue: 'fundamentals',
+        }),
+        lang: fields.select({
+          label: 'Language',
+          options: LANG_OPTIONS,
+          defaultValue: 'en',
+        }),
+        translationKey: fields.relationship({
+          label: 'Translation of',
+          description:
+            'Only set this on a Spanish article — pick the English article it translates.',
+          collection: 'articles',
+          validation: { isRequired: false },
         }),
         tags: fields.array(fields.text({ label: 'Tag' }), {
           label: 'Tags',

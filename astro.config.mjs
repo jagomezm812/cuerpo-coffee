@@ -7,9 +7,21 @@ import remarkInlineSubscribe from './src/lib/remark-inline-subscribe.mjs';
 // This feeds canonical URLs, Open Graph tags, and (from Phase 2) the sitemap and RSS feed.
 export default defineConfig({
   site: 'https://cuerpo.coffee',
-  // React is used for exactly one thing: the Keystatic admin UI at /keystatic,
-  // mounted client:only. It ships zero JS to any public-facing page.
+  // React islands are available project-wide (not just Keystatic) — each
+  // usage still needs to ship 0 KB to pages that don't use it.
   integrations: [react()],
+  i18n: {
+    locales: ['en', 'es'],
+    defaultLocale: 'en',
+    // English stays unprefixed (no URL changes to the already-published
+    // site); Spanish gets /es/. The tradeoff: Spanish routes need their own
+    // files under src/pages/es/ rather than one shared [locale] route tree,
+    // since the default locale being unprefixed is structurally asymmetric
+    // with a prefixed one. Those route files call the same shared helpers
+    // in src/lib/articles.ts as the English routes, so there's still one
+    // source of truth for the actual rendering logic.
+    routing: { prefixDefaultLocale: false },
+  },
   markdown: {
     // Astro's default Markdown processor (Sätteri) doesn't support custom
     // remark plugins, so opting into the remark/rehype pipeline via

@@ -1,11 +1,11 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import ArticleCard from '../../../components/ArticleCard.astro';
-import { getPublishedArticles, getArticlesIndexHref } from '../../../lib/articles';
+import Base from '../../../../layouts/Base.astro';
+import ArticleCard from '../../../../components/ArticleCard.astro';
+import { getPublishedArticles, getArticlesIndexHref } from '../../../../lib/articles';
 
 export async function getStaticPaths() {
   const CATEGORIES = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing'] as const;
-  const articles = await getPublishedArticles('en');
+  const articles = await getPublishedArticles('es');
   return CATEGORIES.map((category) => ({
     params: { category },
     props: {
@@ -20,11 +20,12 @@ const { articles } = Astro.props;
 
 <Base
   title={`${category} — Articles`}
-  description={`Cuerpo Coffee articles about ${category}.`}
+  description={`Cuerpo Coffee articles about ${category}, in Spanish.`}
+  lang="es"
 >
   <section class="container category-page">
     <header class="category-page__header">
-      <p class="category-page__eyebrow"><a href={getArticlesIndexHref('en')}>All articles</a></p>
+      <p class="category-page__eyebrow"><a href={getArticlesIndexHref('es')}>All articles</a></p>
       <h1>{category}</h1>
     </header>
 
