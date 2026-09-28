@@ -26,18 +26,38 @@ const ogImage = image ? new URL(image, Astro.site).toString() : undefined;
 
 <link
   rel="preload"
-  href="/fonts/inter-400.woff2"
+  href="/fonts/manrope-variable.woff2"
   as="font"
   type="font/woff2"
   crossorigin
 />
 <link
   rel="preload"
-  href="/fonts/fraunces-600.woff2"
+  href="/fonts/fraunces-variable.woff2"
   as="font"
   type="font/woff2"
   crossorigin
 />
+
+{/*
+  Sets the theme before first paint so there's no flash of the wrong
+  theme. is:inline means Astro ships this byte-for-byte, uncompressed —
+  hand-minified rather than written readably, to stay well under the 1 KB
+  budget for the whole dark-mode feature (measured: 191 bytes here, 442 in
+  Header.astro's click handler, 633 combined). See Header.astro for the
+  other half — same logic, unminified, for reference:
+
+    (function () {
+      try {
+        var stored = localStorage.getItem('cuerpo_theme');
+        var dark = stored
+          ? stored === 'dark'
+          : matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.dataset.theme = 'dark';
+      } catch (e) {}
+    })();
+*/}
+<script is:inline>(function(){try{var t=localStorage.getItem('cuerpo_theme'),d=t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.dataset.theme='dark'}catch(e){}})();</script>
 
 <meta property="og:type" content={articleMeta ? 'article' : 'website'} />
 <meta property="og:site_name" content={siteName} />

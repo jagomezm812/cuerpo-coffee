@@ -595,9 +595,107 @@ instruction. Checked in a real browser, not just curl: homepage and an article
 page both render correctly — bold sans-serif wordmark, large serif H1, sans-serif
 body/H2 text, cream background, no visual breakage.
 
-**Next up (redesign rollout):** session 2 — header, footer, dark-mode toggle
-(`docs/UPDATE-WORKFLOW.md` section 7, step 2). The alias table above is exactly
-what a components session needs to resolve.
+## v1.1 redesign, session 2: header, footer, dark mode
+
+**Status: built on branch `redesign`, not merged, not live.** Second of six
+sessions. Two open items were checked before starting, per the owner's ask:
+**(a)** giving the language switcher its own path (e.g. `/set-language`) so
+`run_worker_first` doesn't need to be `true` for every request — **not done**,
+added to `docs/BACKLOG.md` instead of fixed here, per instruction. **(b)** the
+LanguagePrompt island's loading strategy — **already done** (`client:idle`,
+confirmed back in the i18n work by reading the actual compiled output, not just
+the directive name).
+
+**Header (`src/components/Header.astro`):** wordmark split into two `<span>`s
+(`Cuerpo` at weight 800, `Coffee` at weight 400, both Manrope); only links to
+pages that exist today (Articles, About — Start here/Series/search all wait for
+their own pages/features); a round dark-mode toggle; a Subscribe **button**
+(previously a plain nav link) using `--button-bg`/`--button-fg`, height 52px
+and pill radius per the Buttons component spec in `docs/DESIGN-SYSTEM.md`
+(font-size uses `--step--1`, the closest existing token to the spec's literal
+"15px", rather than a hardcoded magic number).
+
+**Dark-mode toggle:** moon shown in day mode, sun in dark mode, only one visible
+at a time (CSS-driven off `[data-theme="dark"]`, not JS). Default follows
+`prefers-color-scheme`; an explicit click overrides and is remembered in
+`localStorage` (`cuerpo_theme`). Two `is:inline` scripts — one in `BaseHead.astro`
+sets `data-theme` before first paint (no flash), one in `Header.astro` runs the
+click handler and syncs the button's `aria-pressed`/`aria-label` to whatever
+theme was already active when the button was parsed (important: the head script
+can set dark mode before this button even exists in the DOM, so its initial ARIA
+state can't just assume "always starts light"). **No framework, hand-minified**
+since `is:inline` ships scripts byte-for-byte with no bundler minification —
+measured directly in the built output: 191 bytes (head) + 442 bytes (toggle) =
+**633 bytes combined**, comfortably under the 1 KB budget. Each file keeps an
+unminified, commented version of its script right above the real one, inside an
+Astro `{/* */}` template comment (confirmed this doesn't leak into the shipped
+HTML), so the minified line stays maintainable.
+
+**Footer (`src/components/Footer.astro`):** rebuilt as an always-dark band
+(`--footer`, using the `*-on-dark` token set — confirmed this is correct, not
+just assumed, by computing actual contrast ratios for every pair used: ink-on-dark
+16.3:1, muted-on-dark 8.78:1, olive-on-dark 8.8:1, all far past the 4.5:1
+minimum) — wordmark, one-line description, two link columns, and a faint
+oversized wordmark. Two judgment calls worth flagging, since the design system
+didn't specify either exactly:
+- **Column contents:** "Read" got Articles; "Cuerpo" got About and Subscribe —
+  a reasonable split given only three pages exist today, not a documented rule.
+- **The giant watermark text says "Cuerpo"**, not the full "Cuerpo Coffee" —
+  the design system just says "a faint oversized wordmark" without specifying
+  which text; kept short deliberately so it stays legible without wrapping at
+  phone widths (verified via computed styles, not a screenshot — see the mobile
+  caveat below).
+
+The English/Español switcher's logic is **byte-for-byte unchanged** — same
+`withSetLang()` function, same props, same conditional current-vs-link
+rendering — only its CSS moved to the `*-on-dark` tokens to fit the new band.
+
+**Resolving the `--copper` tension (instruction was explicit: header and footer
+only, not sitewide):** both components' links and the wordmark now use neutral
+tokens (`--ink` / `--ink-on-dark`) with an underline on hover, instead of
+shifting to copper. **Old `--copper` usages deliberately left for later
+sessions** (found by grepping the whole codebase, not just recalled):
+`global.css`'s default `a` link color and the EmailCapture button fill,
+`ArticleCard.astro`'s title-link hover, `Prose.astro`'s blockquote rule,
+the homepage/articles-index/es-articles-index "see all" links, and
+`LanguagePrompt.tsx`'s "Español" button — none of these are header/footer, all
+still copper, all correctly out of scope for this session.
+
+**One rule fixed sitewide, not scoped to header/footer, because it's an
+explicit accessibility requirement, not a link-color preference:** every
+`:focus-visible` outline was copper; `docs/DESIGN-SYSTEM.md`'s Accessibility
+section says focus rings must be in the ink color specifically. Fixed in
+`global.css`, confirmed via computed style that `:focus-visible` still matches
+and resolves to the correct color (`rgb(27, 20, 16)` = `--ink`).
+
+**Also fixed, found while touching these files, not asked for explicitly:**
+`BaseHead.astro` was still preloading `/fonts/inter-400.woff2` and
+`/fonts/fraunces-600.woff2` — both deleted in session 1. These preload links
+were silently 404ing on every page load since then. Now point at the real
+variable font files.
+
+**Verified:** `npm run build` and `astro check` both pass clean. New JS is
+633 bytes combined (measured from the actual build output, not estimated) —
+the "under 1 KB" budget for this session's dark-mode feature, kept separate
+from the pre-existing ~70 KB LanguagePrompt island, which this session didn't
+touch. Contrast computed directly (see above) rather than assumed from the
+design system's general claims. Checked in a real browser: light mode, dark
+mode via the actual toggle click, and the footer correctly staying dark in
+*both* page themes. **Honest limitation:** the browser automation's window-resize
+tool did not actually change the viewport in this session (confirmed via
+`window.innerWidth` after multiple attempts, including from within page JS) —
+mobile-width layout was checked structurally instead (no element has a
+computed `min-width` over 400px; the footer's `@media (max-width: 40rem)` rule
+is confirmed present in the compiled stylesheet) rather than via an actual
+narrow-viewport screenshot. Worth a real phone-width visual check next time the
+tooling cooperates. Keyboard focus was similarly confirmed programmatically
+(`element.matches(':focus-visible')` returns true with the correct outline)
+after synthetic Tab keypresses turned out not to move focus reliably in this
+automation context — a tooling quirk, not a site bug.
+
+**Next up (redesign rollout):** session 3 — Home page (hero photo card, Start
+here tiles, Latest, Series band, Reflection strip, newsletter band).
+`docs/UPDATE-WORKFLOW.md` section 7, step 3.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;

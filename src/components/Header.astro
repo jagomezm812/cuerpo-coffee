@@ -1,31 +1,94 @@
 ---
+// Only pages that exist today. Start here, Series, and search join this
+// list in later sessions, once those pages/features are actually built —
+// docs/DESIGN-SYSTEM.md's full header anatomy (wordmark, four links,
+// search, toggle, Subscribe) is the eventual target, not today's build.
 const links = [
   { href: '/articles', label: 'Articles' },
   { href: '/about', label: 'About' },
-  { href: '/subscribe', label: 'Subscribe' },
 ];
 ---
 
 <header class="site-header">
   <div class="container site-header__row">
-    <a href="/" class="wordmark">Cuerpo Coffee</a>
-    <nav aria-label="Primary">
-      <ul class="site-header__links">
-        {
-          links.map((link) => (
-            <li>
-              <a href={link.href}>{link.label}</a>
-            </li>
-          ))
-        }
-      </ul>
-    </nav>
+    <a href="/" class="wordmark">
+      <span class="wordmark__cuerpo">Cuerpo</span> <span class="wordmark__coffee">Coffee</span>
+    </a>
+    <div class="site-header__actions">
+      <nav aria-label="Primary">
+        <ul class="site-header__links">
+          {
+            links.map((link) => (
+              <li>
+                <a href={link.href}>{link.label}</a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+      <button
+        type="button"
+        id="theme-toggle"
+        class="theme-toggle"
+        aria-label="Switch to dark theme"
+        aria-pressed="false"
+      >
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M20.5 14.5a8.5 8.5 0 1 1-9-13 7 7 0 0 0 9 13Z"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6" />
+          <path
+            d="M12 2.5v2.5M12 19v2.5M4.4 4.4l1.8 1.8M17.8 17.8l1.8 1.8M2.5 12H5M19 12h2.5M4.4 19.6l1.8-1.8M17.8 6.2l1.8-1.8"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
+      <a href="/subscribe" class="subscribe-button">Subscribe</a>
+    </div>
   </div>
 </header>
 
+{/*
+  Click handler for the toggle. Hand-minified like BaseHead.astro's
+  script (is:inline ships both byte-for-byte) — unminified for reference:
+
+    (function () {
+      var btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      var html = document.documentElement;
+      function sync(dark) {
+        btn.setAttribute('aria-pressed', dark);
+        btn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+      }
+      // BaseHead.astro's <head> script may already have set data-theme
+      // before this button was even parsed — sync the button's ARIA state
+      // to match on load, rather than assuming it always starts light.
+      sync(html.dataset.theme === 'dark');
+      btn.onclick = function () {
+        var dark = html.dataset.theme !== 'dark';
+        if (dark) html.dataset.theme = 'dark';
+        else delete html.dataset.theme;
+        sync(dark);
+        try {
+          localStorage.setItem('cuerpo_theme', dark ? 'dark' : 'light');
+        } catch (e) {}
+      };
+    })();
+*/}
+<script is:inline>(function(){var b=document.getElementById('theme-toggle');if(!b)return;var e=document.documentElement;function s(d){b.setAttribute('aria-pressed',d);b.setAttribute('aria-label',d?'Switch to light theme':'Switch to dark theme')}s(e.dataset.theme==='dark');b.onclick=function(){var d=e.dataset.theme!=='dark';if(d)e.dataset.theme='dark';else delete e.dataset.theme;s(d);try{localStorage.setItem('cuerpo_theme',d?'dark':'light')}catch(x){}}})();</script>
+
 <style>
   .site-header {
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--hairline);
   }
 
   .site-header__row {
@@ -38,18 +101,30 @@ const links = [
   }
 
   .wordmark {
-    /* v1.1: Fraunces is reserved for the page H1 only (docs/DESIGN-SYSTEM.md).
-       The wordmark moves to Manrope at weight 800, per section 6 of
-       docs/TECHNICAL-PLAN.md ("the wordmark 800"). */
     font-family: var(--font-body);
-    font-weight: 800;
     font-size: var(--step-1);
     color: var(--ink);
     text-decoration: none;
   }
 
+  .wordmark__cuerpo {
+    font-weight: 800;
+  }
+
+  .wordmark__coffee {
+    font-weight: 400;
+  }
+
   .wordmark:hover {
-    color: var(--copper);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .site-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-5);
+    flex-wrap: wrap;
   }
 
   .site-header__links {
@@ -61,11 +136,70 @@ const links = [
 
   .site-header__links a {
     text-decoration: none;
-    font-weight: 500;
-    color: var(--espresso);
+    font-weight: 600;
+    color: var(--ink);
   }
 
   .site-header__links a:hover {
-    color: var(--copper);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+
+  .theme-toggle {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: none;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--ink);
+  }
+
+  .theme-toggle__icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Only one icon shows at a time — CSS-driven off [data-theme], no JS. */
+  .theme-toggle__icon--sun {
+    display: none;
+  }
+
+  :global([data-theme='dark']) .theme-toggle__icon--moon {
+    display: none;
+  }
+
+  :global([data-theme='dark']) .theme-toggle__icon--sun {
+    display: block;
+  }
+
+  .subscribe-button {
+    /* Design system Buttons component: height 52px, pill, Manrope 600 at
+       15px. --step--1 (14-15px) is the closest existing token to a literal
+       15px — kept token-based rather than a hardcoded magic number, per
+       the project's "tokens only" rule. */
+    display: inline-flex;
+    align-items: center;
+    height: 52px;
+    padding-inline: var(--space-6);
+    border-radius: var(--radius-pill);
+    background: var(--button-bg);
+    color: var(--button-fg);
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: var(--step--1);
+    text-decoration: none;
+    transition: transform 200ms ease;
+  }
+
+  .subscribe-button:hover {
+    transform: translateY(-1px);
   }
 </style>

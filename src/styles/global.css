@@ -41,6 +41,10 @@ html {
   color-scheme: light;
 }
 
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
 body {
   background: var(--crema);
   color: var(--ink);
@@ -105,7 +109,12 @@ a:hover {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible {
-  outline: 2px solid var(--copper);
+  /* docs/DESIGN-SYSTEM.md, Accessibility: "every control has a visible
+     focus ring in the ink color" — this is an explicit accessibility
+     rule, not a link-color preference, so unlike the broader --copper
+     question (see CLAUDE.md's Progress notes), it's fixed everywhere,
+     not scoped to just the header/footer this session. */
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
