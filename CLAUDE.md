@@ -531,6 +531,74 @@ persistent escape hatch was missing.
   OAuth scope, subscribe, the original `/` redirect) under the widened
   `run_worker_first: true` to confirm nothing else broke.
 
+## v1.1 redesign, session 1: colors and fonts
+
+**Status: built on branch `redesign`, not merged, not live.** First of six sessions
+in the rollout plan (`docs/UPDATE-WORKFLOW.md` section 7). Colors and fonts only —
+no layout, no dark-mode toggle, per explicit scope for this session.
+
+**Tokens (`src/styles/tokens.css`):** replaced wholesale with the exact names and
+values from section 6 of `docs/TECHNICAL-PLAN.md` — the full new palette (light on
+`:root`, dark on `[data-theme="dark"]`), the updated fluid type scale, the new
+radius scale, `--shadow-lift`. Two things deliberately NOT changed, both flagged
+inline in the file and here:
+- **`--radius` stays at its v1.0 value (2px)**, not migrated to the new
+  `--radius-lg`/`--radius-pill` scale — changing actual corner shapes sitewide is a
+  visible layout change, out of scope for "colors and fonts only."
+- **`h2`/`h3` still use `--step-2`/`--step-1`**, not the new `--step-3` (now
+  labeled "H2" in the type table) — resizing headings sitewide is also a visible
+  layout change, deferred to a later session. `h1` still uses `--step-4` as before,
+  but that token's own range widened as part of adopting the new values, so **the
+  page H1 renders noticeably larger now even though nothing about which token it
+  uses changed** — confirmed by looking at it, not just inferred from the numbers.
+
+**Aliases for the old token names — the exact list asked for, to remove once
+components migrate to the new names directly:**
+| Old name | Aliased to | Why this one |
+|---|---|---|
+| `--crema` | `var(--surface-2)` | Same role: the cream band background. |
+| `--paper` | `var(--surface-card)` | Same role: card/raised-surface background. |
+| `--espresso` | `var(--ink)` | Closest by color distance to the old hex (#3B2C24) — but this **flattens a real visual hierarchy**: old espresso-styled text (standfirst paragraphs, etc.) was deliberately lighter than ink-styled text (headings); now it's the same darkness. Worth a real look in the components session, not just left as-is indefinitely. |
+| `--copper` | `var(--accent-text)` | The dark-mode-*aware* variant, not `--accent` — old copper's main job was link/text color, and `--accent-text` is the one tuned for on-page contrast in dark mode (`--accent` itself doesn't change under dark). In light mode the two are visually identical (#8A4E35 vs old #8C4B2F), so this alias is a no-op today and only starts to matter once dark mode is switched on. **Real, unresolved tension, not hidden:** the new system wants copper used on 2% of a page at most (one tile, one word, one badge); old `--copper` is still the color of *every* link and button sitewide. This alias keeps things working, not correct — that's real component-session work. |
+| `--line` | `var(--hairline)` | Same role: the 1px subtle divider color. |
+
+`--ink` and `--muted` needed no alias — the new system reuses those exact names,
+just with new hex values, so old component code already resolves to the new colors
+directly.
+
+**Fonts:** self-hosted **variable** fonts (one file spans the whole weight range,
+rather than a static file per weight) — `Manrope Variable` (weight 200–800,
+24.8 KB) and `Fraunces Variable` (weight 100–900 plus the opsz axis, 67.3 KB,
+using fontsource's "standard" style variant specifically because it has WONK and
+SOFT off by default, matching "optical sizing on, WONK off" in section 6). Sourced
+by installing `@fontsource-variable/manrope` and `@fontsource-variable/fraunces`
+with `--no-save` (confirmed `package.json`/`package-lock.json` were untouched),
+copying the `latin` woff2 file from each into `public/fonts/`, then deleting the
+packages from `node_modules` — **no permanent dependency added**, matching the
+explicit instruction. Old `fraunces-600.woff2`, `inter-400.woff2`, and
+`inter-500.woff2` are deleted; Inter is gone from the codebase entirely (checked:
+no remaining `@font-face`, no remaining reference anywhere).
+
+**Fraunces is now genuinely H1-only** — this required one real component change
+beyond `tokens.css`/`global.css`: `Header.astro`'s `.wordmark` was hardcoded to
+`var(--font-display)` (Fraunces), which would have kept rendering the logo in a
+serif despite the new rule. Found by grepping every component for `--font-display`
+usage rather than assuming `global.css` alone would cover it — moved to
+`var(--font-body)` at weight 800, matching "the wordmark 800" in section 6.
+
+**Verified:** `npm run build` and `astro check` both pass clean. JS shipped is
+byte-for-byte unchanged from before this session — same six JS files in the build
+output, zero external `<script src>` on any public page, the same 821-byte inline
+EmailCapture script. No `data-theme` reference exists anywhere in the codebase
+(confirmed via grep) — the dark tokens exist but nothing switches them on, per
+instruction. Checked in a real browser, not just curl: homepage and an article
+page both render correctly — bold sans-serif wordmark, large serif H1, sans-serif
+body/H2 text, cream background, no visual breakage.
+
+**Next up (redesign rollout):** session 2 — header, footer, dark-mode toggle
+(`docs/UPDATE-WORKFLOW.md` section 7, step 2). The alias table above is exactly
+what a components session needs to resolve.
+
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;
 worth checking its own i18n-awareness when this is picked up), build-time OG

@@ -1,27 +1,30 @@
 @import './tokens.css';
 
+/*
+  v1.1 redesign: self-hosted variable fonts, replacing the old static
+  Fraunces-600 + Inter-400/500 setup. One file each covers the whole
+  weight range instead of shipping a separate file per weight — Manrope
+  200-900 in one 24.8 KB file, Fraunces 100-900 (plus the opsz axis) in one
+  67.3 KB file. Sourced from @fontsource-variable's published woff2 files
+  (not a project dependency — copied out and the packages removed; see
+  CLAUDE.md/CHANGELOG for how). Fraunces uses the "standard" style variant
+  (WONK and SOFT axes off), matching "optical sizing on, WONK off" in
+  section 6 of docs/TECHNICAL-PLAN.md.
+*/
 @font-face {
-  font-family: 'Fraunces';
+  font-family: 'Fraunces Variable';
   font-style: normal;
-  font-weight: 600;
+  font-weight: 100 900;
   font-display: swap;
-  src: url('/fonts/fraunces-600.woff2') format('woff2');
+  src: url('/fonts/fraunces-variable.woff2') format('woff2-variations');
 }
 
 @font-face {
-  font-family: 'Inter';
+  font-family: 'Manrope Variable';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 200 800;
   font-display: swap;
-  src: url('/fonts/inter-400.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/inter-500.woff2') format('woff2');
+  src: url('/fonts/manrope-variable.woff2') format('woff2-variations');
 }
 
 *,
@@ -54,17 +57,32 @@ picture {
   display: block;
 }
 
-h1,
-h2,
-h3 {
+/* v1.1: Fraunces is the page H1 only (docs/DESIGN-SYSTEM.md). h2/h3 move
+   to Manrope — weight and letter-spacing per section 6 of
+   docs/TECHNICAL-PLAN.md ("H2 600 ... with letter-spacing -0.035em").
+   Sizes are unchanged this session: h2 still uses --step-2 and h3 still
+   uses --step-1, not the new --step-3 (H2) size from the type table —
+   resizing headings site-wide is a visible layout change, deferred to a
+   later session. h1 keeps using --step-4, whose own range widened as part
+   of adopting the new token values, so it will render larger than before
+   even though nothing about which token it uses has changed. */
+h1 {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 400;
+  font-optical-sizing: auto;
   line-height: 1.15;
+  letter-spacing: -0.025em;
   color: var(--ink);
+  font-size: var(--step-4);
 }
 
-h1 {
-  font-size: var(--step-4);
+h2,
+h3 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: var(--ink);
 }
 
 h2 {

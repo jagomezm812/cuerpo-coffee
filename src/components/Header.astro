@@ -38,8 +38,11 @@ const links = [
   }
 
   .wordmark {
-    font-family: var(--font-display);
-    font-weight: 600;
+    /* v1.1: Fraunces is reserved for the page H1 only (docs/DESIGN-SYSTEM.md).
+       The wordmark moves to Manrope at weight 800, per section 6 of
+       docs/TECHNICAL-PLAN.md ("the wordmark 800"). */
+    font-family: var(--font-body);
+    font-weight: 800;
     font-size: var(--step-1);
     color: var(--ink);
     text-decoration: none;
