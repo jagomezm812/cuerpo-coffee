@@ -56,10 +56,19 @@ Cloudflare Pages — see Progress) · Kit (email) · Lemon Squeezy (payments, ph
   reason, not "because it's available."
 
 ## Design
-Palette: --ink --espresso --muted --crema --paper --copper. Six colors, no more.
-Type: Fraunces (display), Inter (body). Self-hosted woff2. Two faces, three weights, total.
-No shadows, no gradients, radius ≤ 2px, measure capped at 68ch.
-The aesthetic is restraint. When in doubt, remove something.
+Source of truth: docs/DESIGN-SYSTEM.md. Read it before touching any style — token
+names, palette, type, shape, motion, and the section/band rules all live there now,
+not here.
+
+## Update protocol
+- At the start of every session: run git pull. Read CLAUDE.md, docs/DESIGN-SYSTEM.md, the last five entries of docs/CHANGELOG.md, and docs/BACKLOG.md.
+- Never work on main. Create a branch (update/short-name, or redesign for the redesign rollout).
+- One change per session. Reuse existing components. Use design tokens only, never a hardcoded color or size. Follow the section rules in docs/DESIGN-SYSTEM.md (band order, at most two photo spaces per page, footer dark and last).
+- Before merging: the build passes, both themes and mobile are checked, and the owner has seen the preview link and approved.
+- After merging: add a CHANGELOG entry (date, tag, what, why, how to undo) and tag the release (design changes raise the minor number: v1.1, v1.2).
+- Ideas that are not part of the current task go to docs/BACKLOG.md, not into code.
+- Never delete a section or component outright: hide it behind a setting first, and delete only when the owner says so.
+- Never use --force or reset --hard. Never commit secrets.
 
 ## Before you start
 Read docs/TECHNICAL-PLAN.md. It is the spec. Phase 3 is a code freeze — during it,
