@@ -55,6 +55,15 @@ function isNew(publishDate: Date): boolean {
 function formatDate(d: Date): string {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
 }
+
+// Session 6: staggered entrance rise for the Start here tiles and Latest
+// rows, same 80ms step as the hero's own rise-in/--delay-1. Capped at
+// --delay-3 (240ms) regardless of list length — see global.css's comment
+// on .rise-in--delay-3 for why.
+function riseInClass(index: number): string {
+  const step = Math.min(index, 3);
+  return step > 0 ? `rise-in rise-in--delay-${step}` : 'rise-in';
+}
 ---
 
 <Base
@@ -88,18 +97,21 @@ function formatDate(d: Date): string {
           title={troubleshooting[0]?.data.title ?? 'Troubleshooting'}
           description={troubleshooting[0]?.data.description ?? 'Fix the cup you already have.'}
           href={troubleshooting[0] ? getArticleHref(troubleshooting[0]) : undefined}
+          class={riseInClass(0)}
         />
         <PillarTile
           pillar="fundamentals"
           title="Fundamentals"
           description="The few things that actually matter."
           href={fundamentals.length ? getCategoryHref('en', 'fundamentals') : undefined}
+          class={riseInClass(1)}
         />
         <PillarTile
           pillar="gear"
           title="Gear"
           description="What's worth buying, and what isn't."
           href={gear.length ? getCategoryHref('en', 'gear') : undefined}
+          class={riseInClass(2)}
         />
       </div>
     </div>
@@ -118,8 +130,8 @@ function formatDate(d: Date): string {
       </nav>
       <div class="latest__list">
         {
-          latest.map((article) => (
-            <article class="latest-card">
+          latest.map((article, index) => (
+            <article class={`latest-card ${riseInClass(index)}`}>
               <p class="latest-card__meta">
                 <span class="latest-card__category">{article.data.category}</span>
                 <span aria-hidden="true">·</span>
@@ -331,47 +343,20 @@ function formatDate(d: Date): string {
     text-align: center;
   }
 
-  /* Newsletter band: restyles the shared EmailCapture into the white
-     36px-radius card with a pill email field and a neutral button, scoped
-     to this page only via a descendant selector — EmailCapture's own
-     classes (and its mid-article / /subscribe appearances) are untouched. */
+  /* Newsletter band: the shared EmailCapture (global.css's base
+     .email-capture) now already carries the rounded-card/pill-field/
+     neutral-button look this band originally introduced in session 3 — as
+     of this session's mid-article restyle fix, the base style and this
+     band's look are the same card, just at two different sizes. The only
+     thing genuinely specific to this full-width band is more generous
+     padding than the narrower in-article version uses. */
   .newsletter-band {
     background: var(--surface-2);
     padding-block: var(--space-9);
   }
 
   .newsletter-band__inner :global(.email-capture) {
-    background: var(--surface-card);
-    border: none;
-    border-radius: var(--radius-xl);
     padding: var(--space-8) var(--space-6);
-  }
-
-  .newsletter-band__inner :global(.email-capture__form input) {
-    border-radius: var(--radius-pill);
-    border-color: var(--border);
-    background: var(--surface-1);
-  }
-
-  .newsletter-band__inner :global(.email-capture__form button) {
-    background: var(--button-bg);
-    border-color: var(--button-bg);
-    color: var(--button-fg);
-    border-radius: var(--radius-pill);
-    transition:
-      transform 200ms ease,
-      background-color 350ms ease,
-      border-color 350ms ease;
-  }
-
-  .newsletter-band__inner :global(.email-capture__form button:hover) {
-    background: var(--button-bg);
-    border-color: var(--button-bg);
-    transform: translateY(-1px);
-  }
-
-  .newsletter-band__inner :global(.email-capture__form button:active) {
-    transform: scale(0.98);
   }
 
   @media (max-width: 40rem) {

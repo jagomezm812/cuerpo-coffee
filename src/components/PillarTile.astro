@@ -11,6 +11,10 @@ export interface Props {
   title: string;
   description: string;
   href?: string;
+  // Session 6: lets callers add entrance-motion classes (rise-in, etc.)
+  // straight onto the tile's own root element, so a grid of tiles can be
+  // staggered without an extra wrapping div per tile.
+  class?: string;
 }
 
 const PILLAR_LABELS: Record<Props['pillar'], string> = {
@@ -22,12 +26,15 @@ const PILLAR_LABELS: Record<Props['pillar'], string> = {
   reflection: 'Reflection',
 };
 
-const { pillar, title, description, href } = Astro.props;
+const { pillar, title, description, href, class: className } = Astro.props;
 const label = PILLAR_LABELS[pillar];
 const Tag = href ? 'a' : 'div';
 ---
 
-<Tag class={`pillar-tile pillar--${pillar}${href ? '' : ' pillar-tile--soon'}`} href={href}>
+<Tag
+  class={`pillar-tile pillar--${pillar}${href ? '' : ' pillar-tile--soon'}${className ? ` ${className}` : ''}`}
+  href={href}
+>
   <span class="pillar-tile__label">{label}</span>
   <h3 class="pillar-tile__title">{title}</h3>
   <p class="pillar-tile__description">{description}</p>

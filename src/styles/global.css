@@ -88,6 +88,16 @@ body {
   block, Explore's header) — see those files. `--delay-1` staggers a
   secondary element within the same block (e.g. a block's own action
   buttons) by 80ms, per the spec's stagger.
+
+  `--delay-2`/`--delay-3` (added when this was extended to grid/list
+  content — Home's Start here tiles and Latest rows, Explore's topic
+  tiles) continue the same 80ms step. Callers cap the step index at 3
+  (240ms) regardless of how many items are in the list — the point of a
+  stagger is a quick ripple, not a queue; a 6-item list staggered a full
+  80ms each would take almost a second to finish settling on every single
+  page load, which stops feeling like "entrance polish" and starts feeling
+  like the page is slow. Capping at 3 keeps the same 80ms rhythm for the
+  first few items and lets the rest settle together.
 */
 @keyframes rise-in {
   from {
@@ -106,6 +116,14 @@ body {
 
 .rise-in--delay-1 {
   animation-delay: 80ms;
+}
+
+.rise-in--delay-2 {
+  animation-delay: 160ms;
+}
+
+.rise-in--delay-3 {
+  animation-delay: 240ms;
 }
 
 /*
@@ -356,12 +374,27 @@ input {
   the mid-article placement is raw HTML injected by a remark plugin
   (src/lib/remark-inline-subscribe.mjs) into the Markdown AST, not an Astro
   component instance — it needs the exact same classes to render identically.
+
+  Restyled to match the Home newsletter band's card look (rounded surface-
+  card, pill input/button, neutral button-bg) — previously this used the
+  v1.0 token aliases (--paper/--line/--copper, and --radius at its
+  unmigrated 2px) untouched since session 1, which is why it read as
+  visually older/sharper than the newsletter band once that band got its
+  own restyle in session 3. Sized for sitting inside an article's narrower
+  column (max-width unchanged at 40rem) rather than the newsletter band's
+  full-width card — the newsletter band's own override below now only
+  needs to add its extra padding, everything else is shared from here.
+  Affects all three places this class renders (mid-article, end-of-article,
+  and the standalone /subscribe page) — they already shared this exact
+  style before this change, just an older one; restyling only one of the
+  three would have left the other two visually inconsistent with it on the
+  very same article page.
 */
 .email-capture {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: var(--space-7) var(--space-5);
+  background: var(--surface-card);
+  border: none;
+  border-radius: var(--radius-xl);
+  padding: var(--space-7) var(--space-6);
   text-align: center;
   max-width: 40rem;
   margin-inline: auto;
@@ -369,7 +402,7 @@ input {
 
 .email-capture h2 {
   font-size: var(--step-1);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .email-capture > p {
@@ -387,19 +420,19 @@ input {
 .email-capture__form input {
   flex: 1 1 16rem;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--crema);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
   color: var(--ink);
 }
 
 .email-capture__form button {
   padding: var(--space-3) var(--space-5);
-  border: 1px solid var(--copper);
-  border-radius: var(--radius);
-  background: var(--copper);
-  color: var(--paper);
-  font-weight: 500;
+  border: 1px solid var(--button-bg);
+  border-radius: var(--radius-pill);
+  background: var(--button-bg);
+  color: var(--button-fg);
+  font-weight: 600;
   cursor: pointer;
   transition:
     transform 200ms ease,
@@ -408,8 +441,8 @@ input {
 }
 
 .email-capture__form button:hover {
-  background: var(--espresso);
-  border-color: var(--espresso);
+  background: var(--button-bg);
+  border-color: var(--button-bg);
   transform: translateY(-1px);
 }
 

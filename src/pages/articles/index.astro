@@ -33,6 +33,14 @@ const topicTiles = PILLARS.map((p) => {
 
 const tagCounts = await getTagCounts('en');
 
+// Session 6: same staggered entrance rise as Home's Start here tiles and
+// Latest rows — see src/pages/index.astro's riseInClass for the reasoning
+// (80ms step, capped at --delay-3 regardless of list length).
+function riseInClass(index: number): string {
+  const step = Math.min(index, 3);
+  return step > 0 ? `rise-in rise-in--delay-${step}` : 'rise-in';
+}
+
 const seriesGroups = await getSeriesGroups('en');
 const series = seriesGroups.map((group) => ({
   title: group.series.data.title,
@@ -62,8 +70,14 @@ const series = seriesGroups.map((group) => ({
       <h2>Browse by topic</h2>
       <div class="topics__grid">
         {
-          topicTiles.map((tile) => (
-            <PillarTile pillar={tile.category} title={tile.title} description={tile.description} href={tile.href} />
+          topicTiles.map((tile, index) => (
+            <PillarTile
+              pillar={tile.category}
+              title={tile.title}
+              description={tile.description}
+              href={tile.href}
+              class={riseInClass(index)}
+            />
           ))
         }
       </div>

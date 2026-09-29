@@ -1,14 +1,22 @@
 ---
-// Only pages that exist today. Start here, Series, and search join this
-// list in later sessions, once those pages/features are actually built —
-// docs/DESIGN-SYSTEM.md's full header anatomy (wordmark, four links,
-// search, toggle, Subscribe) is the eventual target, not today's build.
+// Only pages that exist today. Start here and Series still join this list
+// in a later session, once those pages exist — docs/DESIGN-SYSTEM.md's
+// full header anatomy (wordmark, four links, search, toggle, Subscribe) is
+// the eventual target, not today's build. Search itself was added this
+// session (below), so it's no longer on that "not yet built" list.
 // Rendered twice below (desktop inline nav + mobile drawer) from this one
 // array, so there's no risk of the two falling out of sync.
 const links = [
   { href: '/articles', label: 'Articles' },
   { href: '/about', label: 'About' },
 ];
+
+// Session 6: the header search button links to the Explore page's own
+// SearchBox with a query param that tells it to auto-focus on load — see
+// SearchBox.astro's script for the other half of this. A query param, not
+// just a plain /articles link, since a fragment/anchor alone wouldn't
+// actually focus the field.
+const searchHref = '/articles?focus=search';
 ---
 
 <header class="site-header">
@@ -72,6 +80,17 @@ const links = [
         </svg>
       </button>
       <a href="/subscribe" class="subscribe-button">Subscribe</a>
+      {/* Plain navigation, no click handler needed — SearchBox.astro's own
+         script reads ?focus=search on load and focuses the field itself.
+         Hidden on mobile (see the media query below): it moves into the
+         drawer instead of becoming a fourth icon in an already-tight
+         mobile header row. */}
+      <a href={searchHref} class="header-search-button" aria-label="Search articles">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.6" />
+          <path d="M20 20l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+      </a>
     </div>
   </div>
 
@@ -84,6 +103,21 @@ const links = [
           </li>
         ))
       }
+      <li>
+        {/* Sensible spot per the session brief: grouped with the other
+           navigation links, not down with the theme toggle (which was
+           deliberately placed last, in an earlier session, as the
+           drawer's final row) and not a bare icon here — this is the one
+           place on the whole site an icon-only search control would have
+           no adjacent visible label at all. */}
+        <a href={searchHref} class="mobile-search-link">
+          <svg class="mobile-search-link__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" stroke-width="1.6" />
+            <path d="M20 20l-4.3-4.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+          Search
+        </a>
+      </li>
       <li>
         <button type="button" id="theme-toggle-mobile" class="mobile-theme-toggle">
           <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -252,7 +286,8 @@ const links = [
   }
 
   .theme-toggle,
-  .menu-toggle {
+  .menu-toggle,
+  .header-search-button {
     display: grid;
     place-items: center;
     width: 40px;
@@ -266,12 +301,14 @@ const links = [
   }
 
   .theme-toggle:hover,
-  .menu-toggle:hover {
+  .menu-toggle:hover,
+  .header-search-button:hover {
     border-color: var(--ink);
   }
 
   .theme-toggle__icon,
-  .menu-toggle__icon {
+  .menu-toggle__icon,
+  .header-search-button svg {
     width: 18px;
     height: 18px;
   }
@@ -359,7 +396,8 @@ const links = [
       display: none;
     }
 
-    .theme-toggle {
+    .theme-toggle,
+    .header-search-button {
       display: none;
     }
 
@@ -395,6 +433,20 @@ const links = [
       text-decoration: none;
       font-weight: 600;
       color: var(--ink);
+    }
+
+    /* Same icon+label row shape as .mobile-theme-toggle below, so the two
+       rows read as one consistent pattern in the drawer — just an <a>
+       instead of a <button>, since this one is plain navigation. */
+    .mobile-search-link {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .mobile-search-link__icon {
+      width: 18px;
+      height: 18px;
     }
 
     .mobile-theme-toggle {

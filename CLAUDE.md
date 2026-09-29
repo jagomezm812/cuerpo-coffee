@@ -1411,6 +1411,86 @@ after search/motion/Reflection land — that Lighthouse+contrast pass was not
 part of what was actually asked for in this session and has not been run.
 Do that before treating session 5 as fully closed out, not just merged.
 
+## v1.1 redesign, post-session-5 fixes: header search, more entrance motion, mid-article subscribe box
+
+**Status: built on branch `redesign`, not merged, not live.** Three fixes
+from owner review of the session 5 preview, still pre-session-6.
+
+**Header search (`Header.astro`, `SearchBox.astro`):** a round icon button
+(same 40px/pill/border treatment as the existing theme-toggle/menu-toggle
+buttons — added to their shared selector, not a new one-off style), placed
+after Subscribe: nav links, dark-mode toggle, Subscribe, search — no
+"Start here"/"Series" links added, header otherwise untouched. Links to
+`/articles?focus=search`, a query param rather than a URL fragment —
+confirmed a fragment alone wouldn't actually focus the field (browsers
+don't auto-focus a form element just because it matches an #id), so
+`SearchBox.astro`'s own script now checks `URLSearchParams` on load and
+calls `.focus()` itself when present, which fires the same input's
+existing `focus` listener — a header-search click lazy-loads Pagefind the
+identical way a direct click into the box already did, no separate code
+path. Mobile: the round button is hidden (added to the same
+`@media (max-width: 40rem)` rule that already hides the desktop theme
+toggle there) and a "Search" row (icon + label, matching the mobile theme
+toggle's own icon+label shape) was added to the hamburger drawer, grouped
+with Articles/About rather than down by the theme toggle (which stays the
+drawer's deliberately-last row from session 2) — not a bare icon there,
+since the drawer is the one place on the site an icon-only control would
+have no adjacent visible label at all.
+
+**More entrance motion (`global.css`, `PillarTile.astro`,
+`src/pages/index.astro`, `src/pages/articles/index.astro`):** the
+`rise-in`/`--delay-1` pair from session 5 (hero, page titles only) gained
+`--delay-2`/`--delay-3`, continuing the same 80ms step, now applied to
+Home's three Start here tiles, Home's Latest rows, and Explore's topic
+tiles. `PillarTile.astro` gained an optional `class` prop (appended onto
+its own root element) so callers can stagger a grid of tiles without an
+extra wrapping div per tile. **Deliberately capped at `--delay-3` (240ms)
+regardless of list length** — Explore has 6 topic tiles, and staggering
+every one a full 80ms apart would take close to a second to finish
+settling on every single page load; capped, the first four tiles step
+0/80/160/240ms and the rest settle together at 240ms, matching the "short
+enough not to feel slow on a second visit" ask directly rather than
+inventing new timing values. Verified via real headless-Chrome computed
+styles (`puppeteer-core`, same `--no-save`/removed-after pattern as every
+check this redesign): Home's tiles/rows measured `0s, 0.08s, 0.16s`;
+Explore's six measured `0s, 0.08s, 0.16s, 0.24s, 0.24s, 0.24s` — the cap
+working exactly as designed, not just as written.
+
+**Mid-article subscribe box (`global.css`'s base `.email-capture`, plus
+`src/pages/index.astro`):** restyled to match the Home newsletter band's
+card look — `--radius-xl` (36px, was `--radius` at its unmigrated 2px from
+session 1), `--surface-card` background with no border (was the old
+`--paper`/`--line` v1.0 aliases), a pill input and a pill neutral
+`--button-bg`/`--button-fg` button (was `--copper`, sharp corners) — while
+keeping its existing 40rem max-width, appropriately narrower than the
+newsletter band's full-width card rather than matching its size too.
+**Scope call, disclosed rather than made silently:** this class is shared
+by three places — mid-article, end-of-article, and the standalone
+`/subscribe` page — all three already rendered identically before this
+fix, just in the older style, so restyling only the mid-article instance
+would have left the other two visually mismatched with it on the very same
+article page. All three got the fix as one shared change instead. The Home
+newsletter band's own override (`.newsletter-band__inner :global(...)`)
+shrank to just its one genuinely different value (more generous padding
+for the full-width band) now that the rest is identical to the shared
+base — the input/button overrides it used to carry were removed as
+duplicates, not left as dead code.
+**Verified two ways:** structurally, the compiled CSS was grepped directly
+(`--radius-xl`, `--surface-card`, `--button-bg` pill button all present,
+zero remaining references to `--paper`/`--line`/`--copper`/bare `--radius`
+in this rule set). Visually, via real Chrome screenshots (`puppeteer-core`)
+of the actual mid-article box on a real article page in light mode, dark
+mode (toggled with the real button, not just CSS emulation), and a 390px
+mobile viewport — rounded card, centered content, pill input/button
+confirmed in all three, not just asserted from the CSS.
+
+**Verified overall:** `npm run build` (30 routes, Pagefind still indexing
+4 pages) and `astro check` (0 errors/warnings/hints) both pass clean.
+`puppeteer-core` was installed `--no-save` and removed immediately after
+use, confirmed via `git status` showing no diff on `package.json`/
+`package-lock.json` afterward — same discipline as every prior check this
+redesign.
+
 **Next up (redesign rollout):** the Lighthouse + contrast report across the
 site (the one piece of session 5's original scope not done above), then
 session 6 — go live: merge `redesign` into `main` after merging latest

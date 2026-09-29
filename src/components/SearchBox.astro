@@ -11,6 +11,15 @@
 // focus or keystroke in this field, via a dynamic import(). The small
 // wiring script below (which just knows *when* to trigger that import)
 // always loads; the actual Pagefind runtime does not, until interaction.
+//
+// Session 6: Header.astro's search button links here with `?focus=search`
+// rather than a plain `/articles` link — a query param, not a URL fragment,
+// since a fragment alone wouldn't actually focus the field (browsers don't
+// auto-focus a form element just because it matches an #id in the URL).
+// The script below checks for that param on load and calls .focus()
+// itself, which fires this same input's existing 'focus' listener below —
+// so a header-search click lazy-loads Pagefind exactly the same way a
+// direct click into the box already did, no separate code path.
 ---
 
 <div class="search">
@@ -116,9 +125,14 @@
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') clear();
       });
+
+      // Header.astro's search button links here with ?focus=search.
+      if (new URLSearchParams(location.search).get('focus') === 'search') {
+        input.focus();
+      }
     })();
 */}
-<script is:inline>(function(){var i=document.getElementById('search-input'),r=document.getElementById('search-results');if(!i||!r)return;var p;function lp(){if(!p){p=import('/pagefind/pagefind.js').then(function(m){return m.init().then(function(){return m})}).catch(function(){return null})}return p}function cl(){r.innerHTML='';r.hidden=true;r.classList.remove('is-visible');i.setAttribute('aria-expanded','false')}function sh(){r.hidden=false;i.setAttribute('aria-expanded','true');requestAnimationFrame(function(){r.classList.add('is-visible')})}var t='';async function rs(term){t=term;if(!term){cl();return}var pf=await lp();if(!pf||t!==term)return;var s=await pf.debouncedSearch(term);if(!s||t!==term)return;var items=await Promise.all(s.results.slice(0,8).map(function(x){return x.data()}));if(t!==term)return;if(items.length===0){r.innerHTML='<p class="search__empty">No results.</p>'}else{r.innerHTML=items.map(function(it){return '<a class="search__result" href="'+it.url+'"><span class="search__result-title">'+it.meta.title+'</span><span class="search__result-excerpt">'+it.excerpt+'</span></a>'}).join('')}sh()}i.addEventListener('focus',lp,{once:true});i.addEventListener('input',function(){rs(i.value.trim())});document.addEventListener('click',function(e){if(e.target!==i&&!r.contains(e.target))cl()});i.addEventListener('keydown',function(e){if(e.key==='Escape')cl()})})();</script>
+<script is:inline>(function(){var i=document.getElementById('search-input'),r=document.getElementById('search-results');if(!i||!r)return;var p;function lp(){if(!p){p=import('/pagefind/pagefind.js').then(function(m){return m.init().then(function(){return m})}).catch(function(){return null})}return p}function cl(){r.innerHTML='';r.hidden=true;r.classList.remove('is-visible');i.setAttribute('aria-expanded','false')}function sh(){r.hidden=false;i.setAttribute('aria-expanded','true');requestAnimationFrame(function(){r.classList.add('is-visible')})}var t='';async function rs(term){t=term;if(!term){cl();return}var pf=await lp();if(!pf||t!==term)return;var s=await pf.debouncedSearch(term);if(!s||t!==term)return;var items=await Promise.all(s.results.slice(0,8).map(function(x){return x.data()}));if(t!==term)return;if(items.length===0){r.innerHTML='<p class="search__empty">No results.</p>'}else{r.innerHTML=items.map(function(it){return '<a class="search__result" href="'+it.url+'"><span class="search__result-title">'+it.meta.title+'</span><span class="search__result-excerpt">'+it.excerpt+'</span></a>'}).join('')}sh()}i.addEventListener('focus',lp,{once:true});i.addEventListener('input',function(){rs(i.value.trim())});document.addEventListener('click',function(e){if(e.target!==i&&!r.contains(e.target))cl()});i.addEventListener('keydown',function(e){if(e.key==='Escape')cl()});if(new URLSearchParams(location.search).get('focus')==='search'){i.focus()}})();</script>
 
 <style>
   .search {
