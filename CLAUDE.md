@@ -1215,10 +1215,207 @@ issues from owner review, both root-caused before touching code:
   verified structurally (exact compiled CSS, computed contrast), not with
   a fresh screenshot.
 
-**Next up (redesign rollout):** session 5 — Pagefind search (loads only
-when opened), the Reflection essay dark-by-default look, CSS view-transition
-motion respecting `prefers-reduced-motion`, then a Lighthouse + contrast
-report across the site. `docs/UPDATE-WORKFLOW.md` section 7, step 5.
+## v1.1 redesign, session 5: search, motion, Reflection essay layout
+
+**Status: built on branch `redesign`, not merged, not live.** Fifth of six
+sessions. This session was interrupted mid-response once (a sleeping laptop),
+resumed after an explicit audit of what had actually landed versus what a
+stale in-progress comment merely claimed — worth recording exactly what that
+audit found, since two of this session's own comments turned out to be
+wrong and got fixed as a direct result, not incidentally.
+
+**Part 1, Pagefind search (Explore page only):** `pagefind` added as a real
+dependency, `postbuild: "pagefind --site dist"` runs the indexer after every
+build. `SearchBox.astro` (new): an input + results dropdown, wired into
+`/articles`'s title block only — not Home, not article pages. Pagefind's own
+JS is genuinely heavy (scales with index size), so it's dynamically
+`import()`ed on first focus/keystroke, never on page load; the small wiring
+script that knows *when* to trigger that import always loads (measured
+elsewhere in this file's JS-budget accounting). `Article.astro` and
+`ReflectionArticle.astro` (below) both carry `data-pagefind-body` on the
+actual essay/article content and `data-pagefind-ignore` on
+sidebar/capture/author/keep-reading chrome, so search results and excerpts
+never surface repeated boilerplate.
+**Verified two ways, not just by reading the build log:** (1) a real
+`npm run build` actually indexes content — 4 pages, 705 words, 2 languages,
+0 errors. (2) The Chrome browser extension would not connect this session
+either (same "not connected" error as every prior session's honest
+limitation) — rather than settle for the build-log check alone, drove a real
+local Chrome via `puppeteer-core` (installed with `--no-save`, removed
+immediately after use, confirmed via `git status` that `package.json`/
+`package-lock.json` were untouched both times): typed "ratio" into the real
+rendered search box on a real `astro preview` server and read back the
+actual DOM. Three correct results came back with `<mark>` tags around the
+matched word in each excerpt, `aria-expanded` flipped to `"true"`, zero
+console errors. This is a genuine render-and-interact check, just via a
+different real browser than the usual extension — flagged here plainly
+rather than presented as if the extension itself had connected.
+
+**Part 2, site-wide motion:** `@view-transition { navigation: auto }` in
+`global.css` — CSS-only cross-document page transitions, no JS, browsers
+without support just navigate normally. A blanket
+`@media (prefers-reduced-motion: reduce)` rule collapses every animation
+and transition on the page to `0.01ms` via `!important` — the one place in
+this codebase `!important` is used deliberately, specifically because it's
+a cross-cutting accessibility override that must win regardless of which
+component declared a more specific transition. `.rise-in`/
+`.rise-in--delay-1` (entrance rise, staggered) and `.photo-settle` (scale-in)
+keyframe utilities, applied to Home's hero, Explore's header, Article's
+header/hero, `ReflectionStrip`'s photo block. `.btn`/`.chip` were extracted
+from `index.astro` into `global.css` (Explore and `ReflectionStrip` needed
+the exact same classes) with consistent hover-lift/press-scale/
+theme-color-fade transitions; `PillarTile`/`SeriesBand` cards got matching
+color-fade transitions added.
+**Verified empirically, not just asserted in a comment** (see the integrity
+fix below for why this distinction matters this session specifically): the
+same `puppeteer-core` session used for search also loaded the homepage
+twice via Chrome's real `Emulation.setEmulatedMedia` CDP call — once
+normally, once with `prefers-reduced-motion: reduce` emulated — and read
+computed styles back. Normal: hero `animation-duration` 0.7s,
+`.btn`/`body` `transition-duration` 0.2s–0.35s. Emulated: every one of
+those collapsed uniformly to `1e-05s` (0.01ms, same value, different string
+representation — confirmed by hand, not just accepted at face value).
+
+**Part 3, the Reflection essay layout (the actual missing piece from the
+interrupted session):** `ReflectionArticle.astro`, a genuinely separate
+layout, not a variant of `Article.astro` — `src/pages/articles/[...slug]
+.astro` and its Spanish counterpart now branch on
+`article.data.category === 'reflection'` and render one or the other. Every
+other category's route, output, and behavior is byte-for-byte unaffected —
+confirmed via a clean `git diff` scoped to exactly the branch logic, not a
+rewrite of the shared path.
+- **Opens dark by default, unless the visitor already explicitly chose
+  light** — the one real new mechanism this session. `BaseHead.astro`
+  gained a `forceDark` prop; its theme-resolution script (still hand-
+  minified, `is:inline`) now bakes the flag in as a literal `true`/`false`
+  via `set:html` at build time rather than reading a runtime data-attribute
+  — one fewer DOM read, and the page's own resolved default is visible
+  directly in its HTML source. Resolution order: an explicit
+  `localStorage.cuerpo_theme` always wins (light or dark); with nothing
+  stored, `forceDark` wins over `prefers-color-scheme`. `Base.astro`
+  threads the prop through; only `ReflectionArticle.astro` ever sets it.
+  There's no scoped "just this band is dark" mechanism anywhere in this
+  codebase, and building one would fight the token architecture every
+  other page relies on — so this forces the *whole* page, header and
+  footer included, into the site's existing dark theme, exactly the way
+  clicking the toggle already does everywhere else. **Cost, measured, not
+  estimated:** the extra `(false||...)` (or `(true||...)`) the script now
+  always needs to be able to say costs 8 bytes on *every* page, not just
+  Reflection ones — 191 bytes became 199. Running total of inline
+  theme/menu JS across the site: 199 + 442 + 298 + 287 = 1,226 bytes (was
+  1,218 before this session).
+- Narrower reading column (`--reflection-measure: 52ch`, a literal value —
+  no existing token fit, and inventing one felt premature for a single page
+  type) and larger body text (`.prose` bumped from the site's base
+  `--step-0` to `--step-1` within this layout's own scope only).
+- A full-bleed hero photo space, breaking out of `.container` entirely — a
+  flat `--tile-black` fill when there's no real `heroImage` yet, same
+  no-fabricated-imagery rule as every placeholder elsewhere in this
+  codebase.
+- A large pull-quote treatment on blockquotes: centered, bigger
+  (`--step-2`), an olive rule above and below instead of Prose's default
+  left copper border — olive, not an arbitrary choice, is explicitly listed
+  in `docs/DESIGN-SYSTEM.md` as the color for "the pull-quote rule."
+  Deliberately selector-scoped as `.reflection-essay__prose-wrap
+  :global(.prose blockquote)` (including `.prose` itself, not just the
+  wrapper class) specifically so it has higher specificity than Prose's own
+  rule regardless of which one the compiler hoists into `<head>` first —
+  two equally-specific rules fighting over source order is exactly the kind
+  of fragile thing not to leave to chance.
+- One in-essay photo space: a new remark plugin,
+  `remark-inline-reflection-photo.mjs`, gated on
+  `file.data.astro.frontmatter.category === 'reflection'` — confirmed this
+  is actually populated before remark plugins run by reading
+  `@astrojs/markdown-remark`'s own source directly (`createMarkdownProcessor
+  ()` builds the VFile with frontmatter attached before calling
+  `parser.process()`), not assumed from the docs. Every other category is a
+  genuine no-op for this plugin, not just visually absent. Inserted after
+  the essay's first h2, deliberately distinct from the pre-existing
+  mid-article newsletter capture's second-h2 placement — both run on
+  Reflection essays without interfering with each other's heading count.
+  Absent, not broken, on an essay with 0 or 1 h2s — the same hidden-not-
+  empty pattern used everywhere else here. Styled unscoped in `global.css`
+  (`.reflection-inline-photo`), same reasoning as `.email-capture`: raw
+  markdown-injected HTML can't be reached by any component's scoped
+  `<style>`. **A stacked-margin bug was caught and fixed before it shipped,
+  not after:** this block is a normal sibling inside `.prose`, which already
+  gives every non-first child a `margin-top` via `.prose > * + *` — an
+  additional `margin-block` here would have double-stacked the top gap, the
+  exact bug class flagged in this file's session 3/4 notes. Fixed by using
+  `margin-bottom` only.
+- No table of contents or series rail — a personal essay isn't the kind of
+  content a reader jumps around section by section, and dropping the
+  sidebar is what actually makes the narrower column read as intentional
+  rather than "the same page, less wide." A judgment call, not asked for
+  explicitly; worth a second look if a reflection essay ever ends up in a
+  series.
+- "More reflections" instead of "Keep reading": only other reflection
+  essays, no same-category-then-fallback logic like the normal Article
+  template's "Keep reading" has. With zero other reflection essays
+  published today, this section is simply absent on the one essay that
+  will eventually exist — verified, not assumed (see below).
+- Mid-article and end-of-article newsletter captures are kept, unchanged —
+  nothing in this session's scope said to drop a monetization touchpoint.
+- **Verified end-to-end against something real, then cleaned up:** with
+  zero real reflection essays published, a temporary local draft fixture
+  (`_temp-reflection-verify.md`, `draft: false`, two h2s, a blockquote) was
+  added, built, checked structurally in the compiled HTML output — force-
+  dark script literal correctly `true`; in-essay photo present exactly
+  once; pull-quote/hero/author-box/Pagefind attributes all present; "More
+  reflections" section genuinely absent from the DOM (its CSS class name
+  still appears in the stylesheet regardless, which isn't the same thing
+  and was checked separately) — then the fixture was deleted and the site
+  rebuilt back down to the real 30 routes / 4 indexed pages before
+  anything was committed. No fabricated content shipped; this was a
+  disposable test, the same spirit as every other "don't invent real
+  content" precedent in this file.
+- The Spanish route tree (`src/pages/es/articles/[...slug].astro`) got the
+  identical branch, kept symmetric with the English one on principle — no
+  Spanish reflection essay exists yet, so that specific path is unverified
+  against real content, same caveat as the English path's own fixture-only
+  verification.
+
+**Two integrity issues found and fixed, worth recording precisely because
+they were caught by review rather than by the code that produced them:**
+this session's first commit (Pagefind + motion, made as a mid-session
+checkpoint before the Reflection layout existed) shipped two comments that
+turned out to be inaccurate: `SearchBox.astro` referenced a
+`ReflectionArticle.astro` file that did not exist yet at the time, and
+`global.css`'s reduced-motion comment claimed a headless-Chrome
+verification had happened and pointed at "CLAUDE.md's session 5 notes" for
+it — notes that did not exist. Neither was caught before that checkpoint
+commit landed. Both are fixed now: the first because the file actually
+exists as of this same session; the second by actually running the
+verification (see Part 2 above) and rewriting the comment with the real
+measured numbers instead of a forward-reference to nothing. **Lesson worth
+keeping:** a comment that claims a verification happened is a factual claim
+like any other in this codebase and needs the same discipline as a Progress
+entry — write it after doing the thing, not while intending to.
+
+**Verified overall:** `npm run build` (30 routes, 4 Pagefind-indexed pages)
+and `astro check` (0 errors/warnings/hints across 41 files) both pass clean
+as of the final commit. Two temporary dev-only tools were used and fully
+removed both times (confirmed via `git status` showing no diff on
+`package.json`/`package-lock.json` after each): `puppeteer-core` for the two
+real-browser checks above.
+**Honest limitation, same as every session this redesign:** the Chrome
+browser extension did not connect this session (tried at the point it
+mattered — the search-box check — not just assumed from memory of prior
+sessions' failures). The `puppeteer-core` checks above are real browser
+verification, just not through that specific tool, and that substitution is
+disclosed here rather than presented as equivalent without comment.
+**Explicitly not done this session, left for a follow-up rather than
+silently dropped:** `docs/UPDATE-WORKFLOW.md`'s own step 5 scope also calls
+for "run Lighthouse and check contrast in both themes" across the site
+after search/motion/Reflection land — that Lighthouse+contrast pass was not
+part of what was actually asked for in this session and has not been run.
+Do that before treating session 5 as fully closed out, not just merged.
+
+**Next up (redesign rollout):** the Lighthouse + contrast report across the
+site (the one piece of session 5's original scope not done above), then
+session 6 — go live: merge `redesign` into `main` after merging latest
+`main` into it first, tag `v1.1-redesign`, final CHANGELOG entry.
+`docs/UPDATE-WORKFLOW.md` section 7, steps 5 (tail) and 6.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;
