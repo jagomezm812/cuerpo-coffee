@@ -1,10 +1,11 @@
 ---
 // The Series band from docs/DESIGN-SYSTEM.md ("surface-3", up to two series
-// cards). Built now per the session 3 instruction, but there is no series
-// data model yet (that lands in session 4 alongside the article template),
-// so index.astro always passes an empty array today — this component
-// renders nothing in that case, the same "hidden when there's nothing to
-// show" mechanism as the Reflection strip, rather than a special case.
+// cards on Home, all of them on Explore — hence the optional `limit`).
+// Built in session 3 with no real data yet; session 4 adds the series
+// model (src/lib/series.ts) and wires this in on both Home and Explore.
+// Renders nothing when `series` is empty — the same "hidden when there's
+// nothing to show" mechanism used throughout this codebase, not a special
+// case for this one component.
 export interface Props {
   series: Array<{
     title: string;
@@ -12,9 +13,10 @@ export interface Props {
     href: string;
     articleCount: number;
   }>;
+  limit?: number;
 }
 
-const { series } = Astro.props;
+const { series, limit = 2 } = Astro.props;
 ---
 
 {
@@ -24,7 +26,7 @@ const { series } = Astro.props;
         <p class="section-label">Series</p>
         <h2>Read in order</h2>
         <div class="series-band__cards">
-          {series.slice(0, 2).map((s) => (
+          {series.slice(0, limit).map((s) => (
             <a href={s.href} class="series-card">
               <h3 class="series-card__title">{s.title}</h3>
               <p class="series-card__description">{s.description}</p>

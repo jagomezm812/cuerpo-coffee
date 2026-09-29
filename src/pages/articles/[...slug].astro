@@ -2,6 +2,8 @@
 import { render } from 'astro:content';
 import Article from '../../layouts/Article.astro';
 import { getPublishedArticles } from '../../lib/articles';
+import { getSeriesGroupForArticle } from '../../lib/series';
+import { getAuthor } from '../../lib/author';
 
 export async function getStaticPaths() {
   const articles = await getPublishedArticles('en');
@@ -12,17 +14,31 @@ export async function getStaticPaths() {
 }
 
 const { article } = Astro.props;
-const { Content } = await render(article);
+const { Content, headings } = await render(article);
 
 const allArticles = await getPublishedArticles('en');
-const relatedArticles = allArticles
-  .filter((a) => a.id !== article.id && a.data.category === article.data.category)
-  .slice(0, 2);
+// Prefer same-category articles ("Keep reading ... by category"), then
+// fill any remaining slots with other recent articles so the section still
+// has something real to show even when a category has few peers today —
+// see CLAUDE.md's session 4 notes for why.
+const sameCategory = allArticles.filter((a) => a.id !== article.id && a.data.category === article.data.category);
+const otherArticles = allArticles.filter((a) => a.id !== article.id && a.data.category !== article.data.category);
+const relatedArticles = [...sameCategory, ...otherArticles].slice(0, 3);
 
 const wordCount = (article.body ?? '').trim().split(/\s+/).filter(Boolean).length;
 const readingTimeMinutes = Math.max(1, Math.round(wordCount / 200));
+
+const seriesGroup = await getSeriesGroupForArticle(article);
+const author = await getAuthor();
 ---
 
-<Article article={article} readingTimeMinutes={readingTimeMinutes} relatedArticles={relatedArticles}>
+<Article
+  article={article}
+  readingTimeMinutes={readingTimeMinutes}
+  relatedArticles={relatedArticles}
+  headings={headings}
+  seriesGroup={seriesGroup}
+  author={author.data}
+>
   <Content />
 </Article>

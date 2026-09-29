@@ -149,6 +149,46 @@ input {
 }
 
 /*
+  Pillar colors (docs/DESIGN-SYSTEM.md: "pillar colors teach readers where
+  they are without a legend") — one shared definition of the six
+  background/foreground pairs, as custom properties, so every component
+  that needs pillar coloring (PillarTile's bento tiles, an article's small
+  category pill) reads the same --pillar-bg/--pillar-fg pair instead of
+  each re-declaring six background rules of its own. Apply the matching
+  `pillar--<category>` class alongside a component's own class.
+*/
+.pillar--troubleshooting {
+  --pillar-bg: var(--olive);
+  --pillar-fg: var(--ink-on-dark);
+}
+
+.pillar--fundamentals {
+  --pillar-bg: var(--tile-sand);
+  --pillar-fg: var(--tile-sand-ink);
+}
+
+.pillar--gear {
+  --pillar-bg: var(--roast);
+  --pillar-fg: var(--ink-on-dark);
+}
+
+.pillar--methods {
+  --pillar-bg: var(--surface-card);
+  --pillar-fg: var(--ink);
+  border: 1px solid var(--hairline);
+}
+
+.pillar--sourcing {
+  --pillar-bg: var(--accent);
+  --pillar-fg: var(--ink-on-dark);
+}
+
+.pillar--reflection {
+  --pillar-bg: var(--tile-black);
+  --pillar-fg: var(--ink-on-dark);
+}
+
+/*
   Email capture: unscoped (not in EmailCapture.astro's own <style>) because
   the mid-article placement is raw HTML injected by a remark plugin
   (src/lib/remark-inline-subscribe.mjs) into the Markdown AST, not an Astro

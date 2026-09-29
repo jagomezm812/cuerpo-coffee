@@ -6,6 +6,8 @@ category: methods
 tags: ["pour-over", "methods", "beginner"]
 draft: false
 featured: false
+series: beginner-basics
+seriesOrder: 2
 ---
 
 Pour-over has a reputation for being fussy: scales, timers, gooseneck kettles, swirl technique. None of that is required to make it better than what a drip machine gives you. Here's a version that needs almost nothing you don't already own.

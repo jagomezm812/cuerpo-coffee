@@ -1,0 +1,64 @@
+---
+// Sticky table of contents, built from the article's own h2 headings —
+// zero JS: Astro's content pipeline already assigns each heading a stable
+// slug id (confirmed in the build output), so this is just a list of plain
+// anchor links plus `position: sticky`. Only rendered by the caller when
+// there are at least two h2s (a "contents" list for one heading is noise).
+export interface Props {
+  headings: { depth: number; slug: string; text: string }[];
+}
+
+const { headings } = Astro.props;
+const h2s = headings.filter((h) => h.depth === 2);
+---
+
+<nav class="toc" aria-label="Table of contents">
+  <p class="toc__label">On this page</p>
+  <ol>
+    {
+      h2s.map((h) => (
+        <li>
+          <a href={`#${h.slug}`}>{h.text}</a>
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+
+<style>
+  .toc {
+    position: sticky;
+    top: var(--space-6);
+  }
+
+  .toc__label {
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--olive-text);
+    margin-bottom: var(--space-3);
+  }
+
+  .toc ol {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    border-left: 1px solid var(--hairline);
+  }
+
+  .toc a {
+    display: block;
+    padding-left: var(--space-4);
+    color: var(--muted);
+    font-size: var(--step--1);
+    text-decoration: none;
+    line-height: 1.4;
+  }
+
+  .toc a:hover {
+    color: var(--ink);
+  }
+</style>

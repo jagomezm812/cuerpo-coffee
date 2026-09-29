@@ -1,10 +1,12 @@
 ---
 // v1.1 redesign, session 3: Home page. Built from docs/DESIGN-SYSTEM.md's
 // section types, in the fixed order the page template specifies. Every
-// section with nothing to show is hidden entirely (Series today; Reflection
-// until a real essay is published) rather than rendered empty — same
-// pattern used throughout this codebase (untranslated articles, empty
-// category pages). English only, per this session's scope — site chrome
+// section with nothing to show is hidden entirely (Reflection, until a real
+// essay is published) rather than rendered empty — same pattern used
+// throughout this codebase (untranslated articles, empty category pages).
+// Series was in that same "built but hidden" state through session 3; as
+// of session 4 there's a real series (see src/lib/series.ts), so it now
+// renders for real. English only, per this session's scope — site chrome
 // (and now Home) stays English-only until the i18n work revisits chrome.
 import Base from '../layouts/Base.astro';
 import PillarTile from '../components/PillarTile.astro';
@@ -16,6 +18,7 @@ import {
   getArticleHref,
   getCategoryHref,
 } from '../lib/articles';
+import { getSeriesGroups } from '../lib/series';
 
 const allArticles = await getPublishedArticles('en');
 
@@ -24,21 +27,25 @@ const fundamentals = allArticles.filter((a) => a.data.category === 'fundamentals
 const gear = allArticles.filter((a) => a.data.category === 'gear');
 const reflection = allArticles.find((a) => a.data.category === 'reflection');
 
-// No series data model exists yet (that's session 4, alongside the article
-// template) — always empty this session, so SeriesBand (built below, per
-// instruction) renders nothing and the band rhythm re-alternates around it
-// automatically.
-const series: Array<{ title: string; description: string; href: string; articleCount: number }> = [];
+// Session 4: real series data (src/lib/series.ts). Capped at 2 here (the
+// component's own default) — Explore shows all of them. A series card
+// links to its first article — there's no dedicated series-detail page
+// (out of scope so far), so "click to start reading it" is the real
+// behavior today.
+const seriesGroups = await getSeriesGroups('en');
+const series = seriesGroups.map((group) => ({
+  title: group.series.data.title,
+  description: group.series.data.description,
+  href: getArticleHref(group.articles[0]),
+  articleCount: group.articles.length,
+}));
 
 const latest = allArticles.slice(0, 6);
 
-// Chips link to the five categories that already have a generated static
-// page. "reflection" was just added to the content schema and Keystatic
-// config this session (per instruction) but its static category route
-// (src/pages/articles/category/[category].astro's own CATEGORIES list) is
-// a separate file, untouched here — add it there, and to this list, once
-// that page is part of a session's explicit scope.
-const chipCategories = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing'] as const;
+// Chips link to all six categories — every one of them now has a real,
+// generated static page (src/pages/articles/category/[category].astro's
+// CATEGORIES list includes "reflection" as of session 3).
+const chipCategories = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing', 'reflection'] as const;
 
 const NEW_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 const buildTime = Date.now();

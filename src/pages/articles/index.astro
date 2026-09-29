@@ -1,57 +1,157 @@
 ---
+// v1.1 redesign, session 4: the Explore page, rebuilt from
+// docs/DESIGN-SYSTEM.md's "Explore" board. Composed the way the design
+// system's page template calls for: a title block, then topic tiles, a tag
+// cloud, and the series list (all of them, unlike Home's two-card cap) —
+// no live search yet (session 5) and no flat "every article" list anymore
+// (Home's Latest, the category pages, and the tag pages already cover
+// that; Explore is a navigation/discovery page, not a duplicate listing).
 import Base from '../../layouts/Base.astro';
-import ArticleCard from '../../components/ArticleCard.astro';
-import { getPublishedArticles, getCategoryHref } from '../../lib/articles';
+import PillarTile from '../../components/PillarTile.astro';
+import SeriesBand from '../../components/SeriesBand.astro';
+import { getPublishedArticles, getCategoryHref, getTagHref, getTagCounts, getArticleHref } from '../../lib/articles';
+import { getSeriesGroups } from '../../lib/series';
 
-const categories = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing'] as const;
-const articles = await getPublishedArticles('en');
+const allArticles = await getPublishedArticles('en');
+
+const PILLARS = [
+  { category: 'troubleshooting' as const, title: 'Troubleshooting', description: 'Fix the cup you already have.' },
+  { category: 'fundamentals' as const, title: 'Fundamentals', description: 'The few things that actually matter.' },
+  { category: 'gear' as const, title: 'Gear', description: "What's worth buying, and what isn't." },
+  { category: 'methods' as const, title: 'Methods', description: 'Step-by-step ways to brew.' },
+  { category: 'sourcing' as const, title: 'Sourcing', description: 'Where good beans actually come from.' },
+  { category: 'reflection' as const, title: 'Reflection', description: 'Coffee as a daily ritual, not just a technique.' },
+];
+
+const topicTiles = PILLARS.map((p) => {
+  const count = allArticles.filter((a) => a.data.category === p.category).length;
+  return { ...p, href: count > 0 ? getCategoryHref('en', p.category) : undefined };
+});
+
+const tagCounts = await getTagCounts('en');
+
+const seriesGroups = await getSeriesGroups('en');
+const series = seriesGroups.map((group) => ({
+  title: group.series.data.title,
+  description: group.series.data.description,
+  href: getArticleHref(group.articles[0]),
+  articleCount: group.articles.length,
+}));
 ---
 
-<Base title="Articles" description="Every Cuerpo Coffee article, newest first.">
-  <section class="container articles-page">
-    <header class="articles-page__header">
-      <h1>Articles</h1>
-      <nav aria-label="Filter by category" class="articles-page__filters">
+<Base title="Articles" description="Explore every Cuerpo Coffee topic, series, and tag.">
+  <header class="explore-header">
+    <div class="container">
+      <p class="section-label">Explore</p>
+      <h1>Every way into Cuerpo Coffee</h1>
+      <p class="explore-header__standfirst">
+        Start with a topic, follow a series in order, or jump straight to a tag.
+      </p>
+    </div>
+  </header>
+
+  <section class="topics-band">
+    <div class="container">
+      <p class="section-label">Topics</p>
+      <h2>Browse by topic</h2>
+      <div class="topics__grid">
         {
-          categories.map((category) => (
-            <a href={getCategoryHref('en', category)}>{category}</a>
+          topicTiles.map((tile) => (
+            <PillarTile pillar={tile.category} title={tile.title} description={tile.description} href={tile.href} />
           ))
         }
-      </nav>
-    </header>
-
-    <div class="articles-page__list">
-      {articles.map((article) => <ArticleCard article={article} />)}
+      </div>
     </div>
   </section>
+
+  {
+    tagCounts.length > 0 && (
+      <section class="tags-band">
+        <div class="container">
+          <p class="section-label">Tags</p>
+          <h2>Tag cloud</h2>
+          <nav aria-label="Browse by tag" class="tags__cloud">
+            {tagCounts.map(({ tag }) => (
+              <a href={getTagHref('en', tag)} class="chip">
+                {tag}
+              </a>
+            ))}
+          </nav>
+        </div>
+      </section>
+    )
+  }
+
+  <SeriesBand series={series} limit={series.length} />
 </Base>
 
 <style>
-  .articles-page {
-    padding-block: var(--space-8);
-    max-width: 56rem;
-    margin-inline: auto;
+  .explore-header {
+    background: var(--surface-1);
+    padding-block: var(--space-9) var(--space-8);
   }
 
-  .articles-page__header {
-    margin-bottom: var(--space-6);
+  .explore-header__standfirst {
+    color: var(--espresso);
+    font-size: var(--step-1);
+    margin-top: var(--space-4);
+    max-width: var(--measure);
   }
 
-  .articles-page__filters {
+  .topics-band {
+    background: var(--surface-2);
+    padding-block: var(--space-9);
+  }
+
+  .topics__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5);
+    margin-top: var(--space-6);
+  }
+
+  .tags-band {
+    background: var(--surface-1);
+    padding-block: var(--space-9);
+  }
+
+  .tags__cloud {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-4);
-    margin-top: var(--space-4);
+    gap: var(--space-3);
+    margin-top: var(--space-6);
   }
 
-  .articles-page__filters a {
-    text-transform: capitalize;
-    color: var(--muted);
-    text-decoration: none;
+  /* Same neutral chip styling as Home's topic-chip row (Buttons component:
+     neutral, outlined) — filters/navigation links, not olive section
+     labels or a pillar tile. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding-inline: var(--space-5);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+    color: var(--ink);
     font-size: var(--step--1);
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color 200ms ease;
   }
 
-  .articles-page__filters a:hover {
-    color: var(--copper);
+  .chip:hover {
+    border-color: var(--ink);
+  }
+
+  @media (max-width: 40rem) {
+    .topics__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chip {
+      transition: none;
+    }
   }
 </style>

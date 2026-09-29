@@ -1,0 +1,108 @@
+---
+// Sidebar card showing an article's position within its series — only
+// rendered by the caller when the article actually belongs to one.
+import type { CollectionEntry } from 'astro:content';
+import { getArticleHref } from '../lib/articles';
+import type { SeriesGroup } from '../lib/series';
+
+export interface Props {
+  group: SeriesGroup;
+  currentId: string;
+}
+
+const { group, currentId } = Astro.props;
+---
+
+<div class="series-rail">
+  <p class="series-rail__label">Series</p>
+  <p class="series-rail__title">{group.series.data.title}</p>
+  <ol class="series-rail__list">
+    {
+      group.articles.map((a: CollectionEntry<'articles'>, i: number) => {
+        const isCurrent = a.id === currentId;
+        return (
+          <li aria-current={isCurrent ? 'true' : undefined}>
+            <span class="series-rail__index">{i + 1}</span>
+            {isCurrent ? (
+              <span class="series-rail__current">{a.data.title}</span>
+            ) : (
+              <a href={getArticleHref(a)}>{a.data.title}</a>
+            )}
+          </li>
+        );
+      })
+    }
+  </ol>
+</div>
+
+<style>
+  .series-rail {
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--hairline);
+  }
+
+  .series-rail__label {
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--olive-text);
+    margin-bottom: var(--space-2);
+  }
+
+  .series-rail__title {
+    font-size: var(--step-0);
+    font-weight: 700;
+    margin-bottom: var(--space-4);
+  }
+
+  .series-rail__list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .series-rail__list li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  /* The "numbered rings in a series list" — one of docs/DESIGN-SYSTEM.md's
+     explicit olive section-marker uses. */
+  .series-rail__index {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--olive-text);
+    color: var(--olive-text);
+    font-size: var(--step--1);
+    font-weight: 700;
+  }
+
+  .series-rail__list a,
+  .series-rail__current {
+    font-size: var(--step--1);
+    line-height: 1.4;
+  }
+
+  .series-rail__list a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .series-rail__list a:hover {
+    color: var(--ink);
+  }
+
+  .series-rail__current {
+    color: var(--ink);
+    font-weight: 700;
+  }
+</style>

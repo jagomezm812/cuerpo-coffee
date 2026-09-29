@@ -980,13 +980,202 @@ with no `padding-bottom` declared, `.start-here-band{padding-block:var(--space-9
 unchanged. Not width- or theme-dependent, so this applies identically on
 mobile and in both themes with no separate override needed.
 
-**Next up (redesign rollout):** session 4 — Article template (title block,
-hero, sticky table of contents, series rail, author box, Keep reading) and
-the `/articles` Explore page (topic tiles, series, tag cloud) — this is also
-where the Series data model gets built for real, and where
-`/articles/index.astro`'s and the Spanish route tree's own category lists
-should pick up `reflection` if they're touched. `docs/UPDATE-WORKFLOW.md`
-section 7, step 4.
+## v1.1 redesign, session 4: Article template, Explore page, series model
+
+**Status: built on branch `redesign`, not merged, not live.** Fourth of six
+sessions. Three parts, all done: the series data model, the full Article
+template, and the Explore page. `/articles/index.astro`'s topic tiles now
+cover all six categories, resolving the `reflection` gap flagged at the end
+of session 3 — that page is fully rebuilt this session anyway (see below),
+so the fix lands as part of the rebuild rather than a separate patch. The
+Spanish route tree's own category/tag lists are still untouched (out of
+scope — Explore is an English-only page, same as Home).
+
+**Series data model:** a new `series` content collection
+(`src/content.config.ts` — title + description only, no body; stored as
+plain YAML, `src/content/series/*.yaml`, since Keystatic's default
+`DataFormat` needed no `content` field for something this small) plus two
+new, optional-together fields on `articles`: `series` (a real
+`reference('series')`, same foreign-key-checked pattern as
+`translationKey`) and `seriesOrder` (a plain integer). A new `.refine()`
+enforces "both or neither" — an article's position only means something in
+the context of a specific series. Keystatic gained a matching `series`
+collection and the two article fields (`fields.relationship` +
+`fields.integer`). Grouping logic lives in one place,
+`src/lib/series.ts` (`getSeriesGroups(lang)`, `getSeriesGroupForArticle()`)
+— a series with zero published articles assigned to it is simply absent
+from the result, the same "hidden, not empty" mechanism used everywhere
+else in this codebase, not a special case written for this feature.
+**Real data, not fabricated:** with only three English articles across
+three different categories, there wasn't enough genuinely related content
+for "two real series" — forcing unrelated categories together would have
+been inventing an editorial relationship that doesn't exist. So: one real
+series, **Beginner Basics** (`the-only-coffee-ratio-you-need` at position
+1, `a-simple-pour-over-method-for-beginners` at position 2 — a defensible,
+real reading order: learn the ratio, then a method that uses it), and one
+genuine placeholder, **Troubleshooting Deep Dives**, with zero articles
+assigned — it exists in the collection so an editor can start assigning
+real troubleshooting articles to it in Keystatic, but it doesn't render
+anywhere until at least one does. The Home page's Series band (built
+hidden in session 3) is now wired to this real data via `getSeriesGroups`
+and is genuinely visible, showing the one qualifying series — "unhidden"
+in the literal sense the instruction asked for, not just technically
+present with an empty array. A series card's link goes to its first
+article (position 1) — there's no dedicated series-detail page (not asked
+for this session), so "click to start reading it in order" is the real,
+working behavior today.
+
+**Author config:** a new Keystatic **singleton** (not a collection — one
+entry, no slug), `author`, editable at `/keystatic` under "Author" —
+`src/content/author/author.yaml` (name + a short bio), read via
+`src/lib/author.ts`'s `getAuthor()`. Deliberately a Keystatic singleton
+rather than a code file: the owner isn't a developer (per this file's own
+"Owner" section) and shouldn't need to be one just to fix a byline. Ships
+with clearly-labeled placeholder content — same precedent as `/about`'s
+placeholder bio — **not a fabricated name**, since `docs/BUSINESS-PLAN.md`
+explicitly says the About page (and, by the same logic, every article's
+byline) should say "your name," i.e., the real owner's, which isn't
+something to invent. Replace the placeholder at `/keystatic` whenever the
+real name/bio is ready; every article on the site pulls from this one
+place, per instruction ("don't invent per-article authors").
+
+**Article template (`src/layouts/Article.astro`, fully rebuilt):**
+- **Title block:** a small pillar-colored category pill (new: the six
+  pillar background/foreground pairs used to live only inside
+  `PillarTile.astro`'s own scoped styles — pulled out into a shared
+  `pillar--<category>` utility in `global.css`, the same "extract when a
+  second thing needs it" move already made once for `.section-label` in
+  session 3, so the pill and `PillarTile` both read the same six colors
+  instead of duplicating them), the H1 (Fraunces, unchanged global rule),
+  the standfirst, and a meta line now showing the author's name (from the
+  config above) alongside the existing date/reading-time/translation-link.
+- **Hero photo space** (this page's one photo space, per the 2-per-page
+  cap): a real `<Image>` when `heroImage` is set (unchanged), otherwise a
+  flat `--tile-dark` placeholder block — no stock imagery — so the title
+  block's rhythm is consistent whether or not a real photo exists yet.
+- **Reading-progress line:** the one genuinely new client script this
+  session (`src/components/ReadingProgress.astro`, hand-minified
+  `is:inline` like every other small script here, verified with `node -c`
+  — 389 bytes). Tracks scroll position through the article's own wrapper
+  (`data-reading-progress-target`) and sets a fixed olive bar's width — the
+  Olive rules explicitly list "the reading-progress line" as one of olive's
+  allowed section-marker uses, so the color choice isn't arbitrary.
+- **Sticky table of contents** (`src/components/TableOfContents.astro`):
+  zero JS — Astro's own content pipeline already assigns every heading a
+  stable slug id (confirmed directly in the build output, e.g.
+  `<h2 id="what-sour-actually-means">`), so this is just `position: sticky`
+  plus a list of anchor links built from `render(article)`'s `headings`
+  array (an Astro/`@astrojs/markdown-remark` feature, independent of the
+  custom `unified()` processor already in use for the mid-article
+  subscribe-block plugin). Only rendered when an article has 2+ h2s — a
+  "contents" list for one heading is noise, not a feature.
+- **Series rail** (`src/components/SeriesRail.astro`): only rendered when
+  `getSeriesGroupForArticle()` finds one. Shows the series title and every
+  article in it, in order, with olive numbered rings (another explicit
+  Olive-rule use: "the numbered rings in a series list") — the current
+  article renders as plain bold text, not a link to itself.
+- **Author box** (`src/components/AuthorBox.astro`): the same flat-
+  placeholder-block treatment as the hero (no fabricated photo), name, and
+  bio — reads the one shared author config, never invents anything
+  per-article.
+- **"Keep reading":** renamed from "Related," now three typographic tiles
+  instead of the old `ArticleCard`-style list, matching
+  docs/DESIGN-SYSTEM.md's "Keep reading: three related tiles" section type
+  (no thumbnails, hover-lift, an arrow). **A deliberate, disclosed
+  interpretation of "by category":** with only 3 English articles spread
+  across 3 different categories, a strict same-category-only filter would
+  return zero results on every single article today, making the whole
+  feature invisible and effectively untested. Both `[...slug].astro` route
+  files now prefer same-category articles first, then fill any remaining
+  slots (up to 3) with other recent articles — same-category still drives
+  the ordering, but the section has something real to show today rather
+  than staying hidden everywhere until there's more content per category.
+- **Newsletter captures unchanged, as instructed:** the mid-article
+  placement (`remark-inline-subscribe.mjs`) and the end-of-article
+  `<EmailCapture />` are in exactly the same place in the markup as before
+  this session — the only new element slotted in near them is the Author
+  box, added right after the existing end-of-article capture, not
+  reordering anything that was already there.
+- **Layout:** a two-column grid (body + a 15rem sidebar holding the TOC and
+  series rail) above 56rem; below it, the sidebar becomes a normal static
+  block (no more `position: sticky`) ahead of the body — collapsing a
+  sticky sidebar to a plain block on phones, not hiding it.
+
+**A real accessibility bug found and fixed this session, not just
+theoretical:** `PillarTile`'s small label span and "Coming soon" text used
+opacity (0.75 and 0.7) to look secondary against whichever pillar color
+filled the tile. That was never actually wrong for the three pillars
+session 3 used (troubleshooting/fundamentals/gear), but this session's
+Explore page uses **all six** for the first time — and computed directly
+(not assumed), the Sourcing tile's copper fill (`--accent`) has the least
+contrast headroom of the six: at those opacities its label text measured
+**3.85:1** and its "Coming soon" text **3.57:1**, both below the 4.5:1
+minimum for normal-size text. Fixed by raising both to `opacity: 0.9`
+(4.78:1 on the same tile, confirmed) — high enough to pass everywhere,
+including the worst case, without visibly flattening the other five tiles.
+Worth remembering: a color combination verified safe for some of a
+component's variants isn't verified for all of them.
+
+**Explore page (`src/pages/articles/index.astro`), fully rebuilt:** no
+more flat "every article, newest first" list — that job is already covered
+by Home's Latest, the category pages, and the new tag pages, and
+docs/DESIGN-SYSTEM.md's own section-type table doesn't list a flat article
+list as one of Explore's allowed sections anyway. Composed the way the
+page template calls for: a title-block opening (white), then **Topic
+tiles** (cream, all six categories via `PillarTile`, "Coming soon" for
+categories with zero articles today — gear, sourcing, reflection), a
+**Tag cloud** (white, plain neutral chips — not literally size-weighted by
+frequency, since with 8 total tags today and every one used once or twice,
+a fake visual-weight cloud would be display theater over meaningless data;
+revisit if tag usage becomes uneven enough to be worth showing), and the
+**Series list** (sand, via the same `SeriesBand` component as Home, now
+given an optional `limit` prop — Home passes its default of 2, Explore
+passes `series.length` to show all of them, per
+docs/DESIGN-SYSTEM.md's own "two cards on Home, all of them on Explore"
+distinction). No live search — session 5, per instruction.
+
+**New static routes:** `/articles/tag/[tag]` (English only, mirroring
+`/articles/category/[category]`'s existing structure) — one page per tag
+actually used by a published English article (not capped at 16; that cap
+is only for the Explore page's own cloud). `getTagCounts()` and
+`getTagHref()` (`src/lib/articles.ts`) are shared by both the Explore
+page's cloud and this route's `getStaticPaths()`, so the count/sort logic
+lives once. 8 unique tags exist today, all under the 16 cap, so every one
+of them shows on Explore.
+
+**Verified:** `npm run build` (30 routes now, up from 22 — the tag pages
+account for 8 of the increase) and `astro check` both pass clean.
+JS budget, measured directly from the build output, not estimated: an
+article page's total plain-JS (excluding the JSON-LD structured-data
+script, which is inert metadata, not logic, and excluding the pre-existing
+~70KB-gzip LanguagePrompt `client:idle` bootstrap, already a disclosed
+exception unrelated to this session) is **2,713 bytes** — up from roughly
+2,038 bytes before this session, the entire increase being the new
+389-byte reading-progress script — comfortably under the 20 KB/article
+budget. Neither Home nor Explore gained any client JS at all this session.
+**Lighthouse mobile performance:** **100/100** for an article page
+(`/articles/why-your-coffee-tastes-sour`) and **100/100** for
+`/articles` (both `npx lighthouse`, mobile form factor, simulated
+throttling, performance category only, against a local `astro preview`
+build). Contrast computed directly for every new color pairing (not just
+the ones that turned out fine — see the Sourcing-tile bug above), lowest
+surviving result 4.78:1. Confirmed structurally: the two-column article
+layout and the six-tile Explore grid both collapse to one column at their
+respective breakpoints (56rem for the article sidebar, 40rem for Explore's
+topic tiles), the sticky TOC becomes a static block on narrow viewports,
+and no hardcoded hex color exists in any file touched this session (grepped
+directly). **Honest limitation, same as the last two sessions:** the
+Chrome browser extension did not connect this session either (same "not
+connected" error, tried again) — verification here is real (a working
+local Lighthouse run, exact compiled-CSS/HTML inspection, computed contrast
+ratios including the bug found above) but there is still no fresh
+screenshot of either page in either theme. Worth a real visual pass the
+next time the extension connects.
+
+**Next up (redesign rollout):** session 5 — Pagefind search (loads only
+when opened), the Reflection essay dark-by-default look, CSS view-transition
+motion respecting `prefers-reduced-motion`, then a Lighthouse + contrast
+report across the site. `docs/UPDATE-WORKFLOW.md` section 7, step 5.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;

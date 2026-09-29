@@ -1,0 +1,69 @@
+---
+// Author box: photo placeholder, name, short bio — pulled from the
+// site-wide author config (src/lib/author.ts), never invented per article.
+export interface Props {
+  name: string;
+  bio: string;
+}
+
+const { name, bio } = Astro.props;
+---
+
+<div class="author-box">
+  {/* No real photo yet (see src/content/author/author.yaml) — a flat
+     avatar-scale placeholder, not a stock photo. Decorative: it conveys no
+     actual likeness yet, so it's aria-hidden rather than given a fabricated
+     alt, same reasoning as the Home/Reflection placeholders. This is a
+     small avatar, not one of the page's two large "photo spaces". */}
+  <div class="author-box__photo" aria-hidden="true"></div>
+  <div class="author-box__text">
+    <p class="author-box__label">Written by</p>
+    <p class="author-box__name">{name}</p>
+    <p class="author-box__bio">{bio}</p>
+  </div>
+</div>
+
+<style>
+  .author-box {
+    display: flex;
+    gap: var(--space-5);
+    align-items: flex-start;
+    padding: var(--space-6);
+    background: var(--surface-2);
+    border-radius: var(--radius-lg);
+  }
+
+  .author-box__photo {
+    flex-shrink: 0;
+    width: 4rem;
+    height: 4rem;
+    border-radius: var(--radius-pill);
+    background: var(--tile-dark);
+  }
+
+  .author-box__label {
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--olive-text);
+    margin-bottom: var(--space-2);
+  }
+
+  .author-box__name {
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+  }
+
+  .author-box__bio {
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  @media (max-width: 32rem) {
+    .author-box {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>

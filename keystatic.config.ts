@@ -1,4 +1,4 @@
-import { config, fields, collection } from '@keystatic/core';
+import { config, fields, collection, singleton } from '@keystatic/core';
 
 const CATEGORY_OPTIONS = [
   { label: 'Troubleshooting', value: 'troubleshooting' },
@@ -69,6 +69,17 @@ export default config({
           collection: 'articles',
           validation: { isRequired: false },
         }),
+        series: fields.relationship({
+          label: 'Series',
+          description: 'Only set this if the article is part of a series. Also set the position below.',
+          collection: 'series',
+          validation: { isRequired: false },
+        }),
+        seriesOrder: fields.integer({
+          label: 'Position in series',
+          description: 'Only set this alongside Series above (1, 2, 3, ...).',
+          validation: { isRequired: false },
+        }),
         tags: fields.array(fields.text({ label: 'Tag' }), {
           label: 'Tags',
           itemLabel: (props) => props.value || 'Tag',
@@ -97,6 +108,40 @@ export default config({
         content: fields.markdoc({
           label: 'Content',
           extension: 'md',
+        }),
+      },
+    }),
+    series: collection({
+      label: 'Series',
+      slugField: 'title',
+      path: 'src/content/series/*',
+      format: 'yaml',
+      columns: ['title'],
+      schema: {
+        title: fields.slug({ name: { label: 'Title' } }),
+        description: fields.text({
+          label: 'Description',
+          multiline: true,
+          validation: { isRequired: true },
+        }),
+      },
+    }),
+  },
+  singletons: {
+    // Site-wide author config (docs/BUSINESS-PLAN.md: one founder voice,
+    // not per-article bylines) — edited here, once, rather than as a code
+    // file, since the owner isn't a developer.
+    author: singleton({
+      label: 'Author',
+      path: 'src/content/author/author',
+      format: 'yaml',
+      schema: {
+        name: fields.text({ label: 'Name', validation: { isRequired: true } }),
+        bio: fields.text({
+          label: 'Short bio',
+          description: 'One or two sentences — who you are and why you can teach this.',
+          multiline: true,
+          validation: { isRequired: true },
         }),
       },
     }),

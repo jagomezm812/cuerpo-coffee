@@ -27,7 +27,7 @@ const label = PILLAR_LABELS[pillar];
 const Tag = href ? 'a' : 'div';
 ---
 
-<Tag class={`pillar-tile pillar-tile--${pillar}${href ? '' : ' pillar-tile--soon'}`} href={href}>
+<Tag class={`pillar-tile pillar--${pillar}${href ? '' : ' pillar-tile--soon'}`} href={href}>
   <span class="pillar-tile__label">{label}</span>
   <h3 class="pillar-tile__title">{title}</h3>
   <p class="pillar-tile__description">{description}</p>
@@ -49,6 +49,11 @@ const Tag = href ? 'a' : 'div';
     border-radius: var(--radius-lg);
     text-decoration: none;
     min-height: 14rem;
+    /* --pillar-bg/--pillar-fg come from the shared `pillar--<category>`
+       utility class in global.css — one definition of the six pillar
+       colors, reused wherever pillar coloring is needed. */
+    background: var(--pillar-bg);
+    color: var(--pillar-fg);
     transition:
       transform 280ms ease,
       box-shadow 280ms ease;
@@ -68,7 +73,12 @@ const Tag = href ? 'a' : 'div';
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.14em;
-    opacity: 0.75;
+    /* 0.9, not a lighter value: computed against every pillar background,
+       not just the three Home uses — the Sourcing tile's --accent fill has
+       the least contrast headroom of the six (copper, mid-tone), and drops
+       below 4.5:1 at anything under ~0.85 opacity. 0.9 keeps a safe margin
+       (4.78:1) on that tile without look flatter on the others. */
+    opacity: 0.9;
   }
 
   .pillar-tile__title {
@@ -99,38 +109,10 @@ const Tag = href ? 'a' : 'div';
     margin-top: auto;
     font-size: var(--step--1);
     font-weight: 600;
-    opacity: 0.7;
-  }
-
-  .pillar-tile--troubleshooting {
-    background: var(--olive);
-    color: var(--ink-on-dark);
-  }
-
-  .pillar-tile--fundamentals {
-    background: var(--tile-sand);
-    color: var(--tile-sand-ink);
-  }
-
-  .pillar-tile--gear {
-    background: var(--roast);
-    color: var(--ink-on-dark);
-  }
-
-  .pillar-tile--methods {
-    background: var(--surface-card);
-    color: var(--ink);
-    border: 1px solid var(--hairline);
-  }
-
-  .pillar-tile--sourcing {
-    background: var(--accent);
-    color: var(--ink-on-dark);
-  }
-
-  .pillar-tile--reflection {
-    background: var(--tile-black);
-    color: var(--ink-on-dark);
+    /* Same reasoning as .pillar-tile__label above — 0.7 dropped the
+       Sourcing tile's "Coming soon" text to 3.57:1, below the 4.5:1
+       minimum for normal-size text. */
+    opacity: 0.9;
   }
 
   @media (prefers-reduced-motion: reduce) {
