@@ -74,7 +74,7 @@ const translationHref = await getTranslationHref(article);
   otherLangHref={translationHref}
   forceDark
 >
-  <article class="reflection-band" data-pagefind-body>
+  <article class="reflection-band" data-pagefind-body data-pagefind-meta={`category:${category}`}>
     <header class="container reflection-essay__header rise-in">
       <p class={`category-pill pillar--${category}`}>{category}</p>
       <h1>{title}</h1>

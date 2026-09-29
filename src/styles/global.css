@@ -281,6 +281,33 @@ input {
 }
 
 /*
+  The small pillar-colored category pill — an article's own category label
+  (Article.astro/ReflectionArticle.astro's title block) and, since this
+  session, the search dropdown's per-result category label. Moved here
+  from Article.astro's own scoped <style> once a second consumer needed
+  it: ReflectionArticle.astro was already applying this exact class
+  without ever defining it (its category pill has been rendering
+  completely unstyled since session 5 — caught and fixed as part of this
+  move, not a separate fix), and the search dropdown's results are raw
+  HTML injected via innerHTML, which can't reach a scoped <style> at all
+  (see the .search block below for why that matters here specifically).
+*/
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--pillar-bg);
+  color: var(--pillar-fg);
+  font-size: var(--step--1);
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-4);
+}
+
+/*
   Buttons component (docs/DESIGN-SYSTEM.md): pill-shaped, 52px, Manrope
   600. Every button is neutral — never filled with olive or copper. Moved
   here from Home's index.astro in session 5 once Explore and ReflectionStrip
@@ -576,6 +603,134 @@ input {
   border-radius: var(--radius-lg);
   background: var(--tile-dark);
   margin-bottom: var(--space-6);
+}
+
+/*
+  Search dropdown (SearchBox.astro) — unscoped for the same class of
+  reason as .email-capture/.reflection-inline-photo above, but a different
+  root cause worth spelling out since it's not markdown-injected HTML this
+  time: these result rows are built as plain strings by SearchBox.astro's
+  own client script and inserted via `results.innerHTML =` at runtime.
+  Astro's scoped <style> only ever reaches elements the compiler itself
+  saw and stamped with a data-astro-cid-* attribute — anything built by
+  client JS after the page has already rendered never gets that attribute,
+  so scoped selectors for these classes would silently never match. This
+  was shipped once that way (see SearchBox.astro's own comment) and looked
+  fine in every structural/DOM check, because the elements and class names
+  were all genuinely there — it just rendered as unstyled, run-together
+  text with default link/mark colors, a purely visual failure that only
+  actually looking at the rendered page caught.
+
+  .search/.search__input/.search__results themselves are static markup
+  Astro does compile, so they'd have worked scoped — kept here anyway, one
+  file for the whole component, rather than splitting its CSS across two
+  places depending on which specific element happens to be dynamic today.
+*/
+.search {
+  position: relative;
+  max-width: 28rem;
+}
+
+.search__input {
+  width: 100%;
+  height: 52px;
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-card);
+  color: var(--ink);
+  font-size: var(--step--1);
+}
+
+.search__input::placeholder {
+  color: var(--muted);
+}
+
+/* Shape/space/depth (docs/DESIGN-SYSTEM.md): "shadow only on hover-lift
+   and the search dropdown, never at rest" — this is the one other place
+   besides a card's hover state that a shadow is allowed at all. Motion:
+   "dropdowns fade in over 300ms" — opacity-only, driven by the
+   .is-visible class the wiring script toggles once results exist. */
+.search__results {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 24rem;
+  overflow-y: auto;
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lift);
+  padding: var(--space-2);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.search__results.is-visible {
+  opacity: 1;
+}
+
+/* One clean row per article: a hairline between rows (none on the last),
+   the category pill, the title, then the excerpt — matching the Explore
+   board's own clean-result-row pattern in docs/DESIGN-SYSTEM.md. Hover and
+   the keyboard-highlighted state (aria-selected, set by the script as the
+   visitor presses arrow keys) share the same treatment. */
+.search__result {
+  display: block;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: background-color 200ms ease;
+}
+
+.search__result:last-child {
+  border-bottom: none;
+}
+
+.search__result:hover,
+.search__result[aria-selected='true'] {
+  background: var(--surface-2);
+}
+
+/* The shared .category-pill is sized for an article's title block
+   (margin-bottom: --space-4, meant to sit above an h1) — too much space
+   in a compact result row, so it's tightened here. Higher specificity
+   than the bare .category-pill rule (two selectors vs. one), so this
+   reliably wins regardless of which rule the compiler lists first. */
+.search__result .category-pill {
+  margin-bottom: var(--space-2);
+}
+
+.search__result-title {
+  color: var(--ink);
+  font-weight: 700;
+  font-size: var(--step--1);
+  margin-bottom: var(--space-1);
+}
+
+/* Pagefind's own excerpt is already a short, relevant snippet around the
+   match (not the whole matched passage) — this line-clamp is a visual
+   backstop for the rare longer excerpt, not what does the truncating. */
+.search__result-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+.search__result-excerpt mark {
+  background: var(--accent-tint);
+  color: var(--accent-text);
+}
+
+.search__empty {
+  padding: var(--space-3) var(--space-4);
+  color: var(--muted);
+  font-size: var(--step--1);
 }
 
 /*

@@ -1491,6 +1491,96 @@ use, confirmed via `git status` showing no diff on `package.json`/
 `package-lock.json` afterward — same discipline as every prior check this
 redesign.
 
+## v1.1 redesign, post-session-5 fix: search dropdown was rendering unstyled
+
+**Status: built on branch `redesign`, not merged, not live.** Owner review
+of the previous preview attached a real screenshot: the search dropdown on
+`/articles` rendered as one giant underlined wall of run-together text —
+correct data, completely absent styling.
+
+**Root cause, confirmed by reading the actual failure, not guessed:**
+`SearchBox.astro`'s result-row CSS (`.search__result`,
+`.search__result-title`, etc.) lived in the file's own scoped `<style>`
+block, which was never wrong on its own — but the result rows it targets
+are built as plain HTML strings by the component's client script and
+inserted via `results.innerHTML =` the moment someone types, not rendered
+by Astro at build time. Astro's scoped-style mechanism works by stamping a
+`data-astro-cid-*` attribute onto every element the compiler itself sees
+and rewriting that component's selectors to require it — anything built by
+client JS after the page has already rendered never receives that
+attribute, so the scoped selectors silently never matched. Every prior
+check in this redesign that inspected the resulting DOM/text content
+(including this project's own prior sessions) would have shown the classes
+and structure as correct, because they were — only actually rendering the
+page and looking at it surfaced the bug, exactly the lesson this file's
+own "login works ≠ the full write path works" precedent from the Keystatic
+OAuth work already flagged in a different context. **Fixed the same way
+`.email-capture` and `.reflection-inline-photo` already were**: all of the
+result-row CSS moved unscoped into `global.css`. `.search`/`.search__input`/
+`.search__results` (static markup Astro does compile) stayed alongside it
+in the same file rather than being split across two places depending on
+which specific element happens to be dynamic.
+
+**Rebuilt the actual result markup**, still from Pagefind's own structured
+per-result data (never its default result UI, which this project has never
+used) — confirmed one row per matching article was already true before this
+fix (Pagefind indexes one result per page; verified with real multi-result
+output in a prior session), so the "raw dump" the owner saw was a purely
+visual failure, not a data-model one:
+- A pillar-colored category label, reusing the exact same `.category-pill`/
+  `pillar--<category>` classes an article's own title block uses — this
+  needed real wiring, not just a class name: `data-pagefind-meta="category:
+  ${category}"` was added to `Article.astro`'s and `ReflectionArticle.astro`'s
+  `data-pagefind-body` element so Pagefind actually captures and exposes it
+  per result.
+- **A second, unrelated bug caught and fixed in the same pass, not
+  separately:** `.category-pill` itself was scoped only inside
+  `Article.astro`'s own `<style>` — `ReflectionArticle.astro` had been
+  applying the exact same class since session 5 without ever defining it,
+  so a Reflection essay's category pill has been rendering completely
+  unstyled (no pill shape, no color) this whole time. Moving
+  `.category-pill` to `global.css` alongside the `pillar--*` definitions
+  it's always used with (the same "extract when a second thing needs it"
+  move already made for `.btn`/`.chip`) fixed both consumers at once.
+- The title, bold and ink-colored, no default link-blue/underline (only a
+  background change on hover or keyboard-highlight).
+- Pagefind's own excerpt (already a short, relevant snippet around the
+  match, not the whole passage) with a `-webkit-line-clamp: 2` CSS backstop
+  and the existing `<mark>` styling (accent-tint background) now actually
+  applying.
+- A hairline between rows, none after the last — same pattern as
+  `.latest-card`.
+- Capped at 5 visible results (the brief's 4-6 range), down from the
+  previous, arbitrary 8.
+
+**Keyboard navigation, added — wasn't there before at all:** proper
+combobox/listbox pattern (`aria-activedescendant` on the input, `role=
+"option"`/stable `id`/`aria-selected` on each row) rather than moving real
+DOM focus off the text field, since the field needs to stay focused and
+typeable throughout. Arrow Down/Up moves the highlighted result (clamped,
+no wraparound — not asked for), Enter opens the highlighted result or, if
+none is highlighted yet, the top one (the common "just hit Enter" search
+expectation), Escape closes exactly as it already did. Minified script
+syntax-checked with `node -c` before trusting it, same discipline as every
+other hand-minified script in this codebase.
+
+**Verified two ways, since this exact bug is the reason a DOM check alone
+isn't trustworthy here:** structurally (grepped the compiled CSS/HTML for
+the new class names and the `data-pagefind-meta` attribute actually
+landing in the build output), and visually — the Chrome extension still
+would not connect (tried again, same result as every session this
+redesign), so real screenshots via `puppeteer-core` (installed `--no-save`,
+removed after) of the actual rendered dropdown for the query "why": three
+clean, separated rows with a colored category pill, bold title, and a
+single highlighted-word excerpt, confirmed in light mode, dark mode
+(toggled with the real button), and a 390px mobile viewport. Keyboard nav
+verified the same way: two `ArrowDown` presses landed
+`aria-activedescendant`/the matching row's `aria-selected` on index 1 as
+expected, and `Escape` hid the results panel.
+
+**Verified overall:** `npm run build` (30 routes, Pagefind still indexing
+4 pages) and `astro check` (0 errors/warnings/hints) both pass clean.
+
 **Next up (redesign rollout):** the Lighthouse + contrast report across the
 site (the one piece of session 5's original scope not done above), then
 session 6 — go live: merge `redesign` into `main` after merging latest

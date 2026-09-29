@@ -55,7 +55,12 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
   <ReadingProgress />
 
   <div class="article-band">
-  <article class="container article" data-reading-progress-target data-pagefind-body>
+  <article
+    class="container article"
+    data-reading-progress-target
+    data-pagefind-body
+    data-pagefind-meta={`category:${category}`}
+  >
     <header class="article__header rise-in">
       <p class={`category-pill pillar--${category}`}>{category}</p>
       <h1>{title}</h1>
@@ -169,20 +174,8 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
     margin-bottom: var(--space-6);
   }
 
-  .category-pill {
-    display: inline-flex;
-    align-items: center;
-    height: 28px;
-    padding-inline: var(--space-3);
-    border-radius: var(--radius-pill);
-    background: var(--pillar-bg);
-    color: var(--pillar-fg);
-    font-size: var(--step--1);
-    font-weight: 700;
-    text-transform: capitalize;
-    letter-spacing: 0.04em;
-    margin-bottom: var(--space-4);
-  }
+  /* .category-pill moved to global.css — see its comment there for why
+     (ReflectionArticle.astro needed it too, and never had its own copy). */
 
   .article__standfirst {
     font-size: var(--step-1);
