@@ -6,6 +6,7 @@ const CATEGORY_OPTIONS = [
   { label: 'Gear', value: 'gear' },
   { label: 'Methods', value: 'methods' },
   { label: 'Sourcing', value: 'sourcing' },
+  { label: 'Reflection', value: 'reflection' },
 ] as const;
 
 const LANG_OPTIONS = [

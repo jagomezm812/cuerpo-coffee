@@ -819,9 +819,158 @@ label spans' CSS resolves correctly for both the default and
 but is not the same as watching it render — worth a real visual pass next
 time the extension connects.
 
-**Next up (redesign rollout):** session 3 — Home page (hero photo card, Start
-here tiles, Latest, Series band, Reflection strip, newsletter band).
-`docs/UPDATE-WORKFLOW.md` section 7, step 3.
+## v1.1 redesign, session 3: Home page
+
+**Status: built on branch `redesign`, not merged, not live.** Third of six
+sessions. Home page only, rebuilt from `docs/DESIGN-SYSTEM.md`'s section
+types in the fixed order the page template specifies. Header, footer, and
+the mobile menu are untouched — correct already from session 2 and its two
+fix rounds.
+
+**Hero photo card (`src/pages/index.astro`), white band:** the card itself
+doubles as photo space 1 — a flat `--tile-dark` placeholder fill (no stock
+imagery), with the hero text overlaid in the `*-on-dark` tokens: an olive
+label ("Home coffee, done properly"), the Fraunces H1 ("Coffee *with
+body.*" — the italic word is this page's one allowed copper touch, using
+`--accent-on-dark`, the variant tuned for contrast on a dark fill, not the
+light-mode `--accent`), a one-sentence description, and two buttons
+("Start here" anchors to `#start-here"`, "Read the latest" links to
+`/articles"`). Inset from the band's edges by `--space-5` (24px), matching
+the design system's literal "inset 24px" instruction — there's no existing
+token for the design system's wider 1392px/1440px reference container, so
+the inset wrapper uses a plain `90rem` max-width rather than inventing a new
+token for one page; worth revisiting if a second page ever needs the same
+wider-than-`.container` band width. No `src/assets/home-hero.*` file exists,
+so the flat placeholder is what's live — swap in a real `<Image>` there
+first, before anything else, once real photography exists.
+
+**Start here (cream band):** three `PillarTile` instances (new component,
+`src/components/PillarTile.astro` — built to the full six-pillar color map
+in `docs/DESIGN-SYSTEM.md` even though only three are used this session, so
+the same component drops into the Explore page's topic tiles later with no
+changes). Troubleshooting (olive) links straight to the newest
+troubleshooting article and shows its real title/description, not the
+category page — there's exactly one such article today
+(`why-your-coffee-tastes-sour`), so this is verified against something real.
+Fundamentals (sand) links to its category page (one article exists).
+Gear (roast) has zero articles today, so it renders as a non-link tile with
+a "Coming soon" label instead of an arrow — the `PillarTile` component
+switches its root tag between `<a>` and `<div>` based on whether an `href`
+was passed, rather than rendering a dead link.
+
+**Latest (white band):** every title renders as a plain `<h3>` at the same
+size and weight — no featured/large treatment, the same fix already applied
+once to the old homepage structure (`docs/CHANGELOG.md`'s "second round of
+post-session-2 fixes" entry) carried over by construction, since this is a
+flat list with no special-cased first item. A row of neutral, outlined
+"topic chips" (Buttons component styling, not the olive "category pills"
+rule — see below) links to five of the six categories; a "View all
+articles" button sits below the list. **Deliberately excludes a
+"Reflection" chip**, even though `reflection` was added to the schema this
+session (see below): its static category page
+(`src/pages/articles/category/[category].astro`'s own `CATEGORIES` list) was
+also updated to include it — so `/articles/category/reflection` does build
+and render ("No articles here yet.") — but `/articles/index.astro`'s
+separate, still-hardcoded category filter list and the Spanish route tree's
+own `CATEGORIES` array were **not** touched, out of respect for this
+session's "Home page only" scope; add `reflection` there whenever those
+pages are next in scope. Each card shows its category name as small olive
+text (`docs/DESIGN-SYSTEM.md`'s "category names" rule — a plain label, not a
+filled pill; that's reserved for the Troubleshooting tile and stays under
+the 4% olive budget), and a copper "New" badge only when `publishDate` is
+within 14 days of build time — computed against `Date.now()` at build,
+same pattern as Footer's copyright year. None of today's four articles
+qualify (all from January), so the badge doesn't render anywhere yet;
+that's correct, not a bug — verified by grepping the build output for zero
+matches. Title links use the neutral ink-plus-underline-on-hover treatment
+Header/Footer already settled on in session 2, not copper — this page's
+copper usage is now down to exactly two places, both explicitly allowed by
+the design system: the hero's italic word, and the "New" badge.
+
+**Series band: built, not shown.** `src/components/SeriesBand.astro` exists
+in full (two-card layout, sand band, olive article-count label) per
+instruction, but there's no series data model yet — that's session 4's
+work, alongside the article template. `index.astro` passes it a hardcoded
+empty array; the component renders nothing when its `series` prop is empty,
+the same "hidden, not empty" mechanism used everywhere else in this
+codebase (untranslated articles, empty category pages), not a special case
+written for this one component.
+
+**Reflection strip: built, conditionally shown.**
+`src/components/ReflectionStrip.astro` — a `--roast` dark band holding photo
+space 2 (a flat placeholder, `aria-hidden`, not given fabricated alt text or
+a caption, since it conveys no actual photographic content yet — replace
+with a real `<Image>` and real alt text together, not before). `index.astro`
+only renders it when a published article has `category: reflection`; none
+exists today, so it doesn't render — verified absent from the build output.
+**`reflection` added as a real category**, per instruction: the content
+schema (`src/content.config.ts`), Keystatic config (`keystatic.config.ts`),
+and the EN static category-page route (see above) all know about it now, so
+the moment a real reflection essay is published, the category page, the
+strip, and (once added, see above) a homepage chip all light up on their
+own with no further code changes.
+
+**Newsletter band (cream band):** the shared `EmailCapture` component is
+reused unchanged — its own markup, classes, and `/api/subscribe` wiring are
+untouched — restyled only via a scoped descendant selector
+(`.newsletter-band__inner :global(.email-capture) {...}`) that applies
+solely inside this page's own wrapper: white `--surface-card` background,
+`--radius-xl` (36px, the design system's specific newsletter-card radius),
+a pill-shaped email input, and a neutral `--button-bg`/`--button-fg` submit
+button (never olive or copper, per instruction). The mid-article and
+`/subscribe`-page instances of `EmailCapture` still render with their
+original v1.0 styling — this session did not touch the shared, unscoped
+`.email-capture` rules in `global.css`, so nothing outside this one page
+changed. Success/error messaging behavior is identical (same script, same
+component).
+
+**Band rhythm:** white (hero) → cream (Start here) → white (Latest) →
+[Series, hidden] → roast (Reflection, when shown) → cream (Newsletter) →
+near-black (Footer). No two adjacent rendered bands share a color in either
+configuration (with or without Reflection showing) — checked both cases
+explicitly, not just the common one. Exactly two photo spaces at most (hero,
+Reflection) — Series carries none, matching the "typographic unless it's
+one of the two photo spaces" rule.
+
+**Verified:** `npm run build` and `astro check` both pass clean (22 routes,
+including the new `/articles/category/reflection`). Confirmed no new
+client-side JavaScript ships on this page: the same six JS bundle files
+exist in the build output as before this session (`LanguagePrompt`,
+`client`, `jsx-runtime`, `keystatic-page`, `react-dom`, `react` — Keystatic's
+own bundle, untouched), and the homepage's inline `<script>` tags are the
+same ones already shipping from `BaseHead`/`Header`/`EmailCapture`/
+`LanguagePrompt` before this session — nothing new added. Contrast computed
+directly for every new color pairing (olive/sand/roast tile text, the
+hero's copper `em`, both light- and dark-mode newsletter buttons, the New
+badge) rather than assumed from the design system's general claims — lowest
+result 5.40:1, comfortably past the 4.5:1 minimum. Verified structurally,
+class by class, that Series and Reflection are genuinely absent from the
+build output (not just visually hidden), that the three Start Here tiles
+resolve to the correct three background colors and the correct
+link/"Coming soon" state, and that the mobile (`width <= 40rem`) media
+queries collapse the Start Here grid, the Series card grid, and the
+Reflection strip's two-column layout to one column each.
+**Lighthouse mobile performance: 99/100** (`npx lighthouse`, mobile
+form factor, simulated throttling, performance category only, against a
+local `astro preview` build) — FCP 1.4s, LCP 2.0s, TBT 0ms, CLS 0.
+**Honest limitation, same as the last two sessions:** the Chrome browser
+extension used for visual verification did not connect this session either
+(tried twice, same "extension is not connected" error both times) — so
+there is no fresh screenshot of this page in either theme or at mobile
+width. Verification here is real (computed contrast ratios, exact compiled
+CSS/HTML inspection, a real Lighthouse run against a real local server) but
+it is not the same as watching the page render. Worth a real visual pass
+the next time the extension connects, especially the hero card's text
+legibility over its flat dark fill and the tile grid's actual spacing at
+phone width.
+
+**Next up (redesign rollout):** session 4 — Article template (title block,
+hero, sticky table of contents, series rail, author box, Keep reading) and
+the `/articles` Explore page (topic tiles, series, tag cloud) — this is also
+where the Series data model gets built for real, and where
+`/articles/index.astro`'s and the Spanish route tree's own category lists
+should pick up `reflection` if they're touched. `docs/UPDATE-WORKFLOW.md`
+section 7, step 4.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;

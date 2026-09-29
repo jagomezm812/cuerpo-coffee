@@ -131,6 +131,24 @@ input {
 }
 
 /*
+  v1.1: the small uppercase label that sits above a section heading (Start
+  here, Series, Newsletter, Latest) — docs/DESIGN-SYSTEM.md's "section
+  labels" rule (olive, 12px/700/uppercase, 0.14em tracking). Unscoped so
+  index.astro, SeriesBand.astro and ReflectionStrip.astro can all share one
+  definition instead of repeating it. Footer.astro's own `.site-footer__heading`
+  is a deliberate local override, not this class — see the comment there for
+  why (it has no bigger heading below it and must function as one itself).
+*/
+.section-label {
+  font-size: var(--step--1);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--olive-text);
+  margin-bottom: var(--space-3);
+}
+
+/*
   Email capture: unscoped (not in EmailCapture.astro's own <style>) because
   the mid-article placement is raw HTML injected by a remark plugin
   (src/lib/remark-inline-subscribe.mjs) into the Markdown AST, not an Astro

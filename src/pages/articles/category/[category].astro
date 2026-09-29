@@ -4,7 +4,7 @@ import ArticleCard from '../../../components/ArticleCard.astro';
 import { getPublishedArticles, getArticlesIndexHref } from '../../../lib/articles';
 
 export async function getStaticPaths() {
-  const CATEGORIES = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing'] as const;
+  const CATEGORIES = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing', 'reflection'] as const;
   const articles = await getPublishedArticles('en');
   return CATEGORIES.map((category) => ({
     params: { category },

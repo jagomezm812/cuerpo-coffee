@@ -11,7 +11,7 @@ const articles = defineCollection({
         description: z.string().min(120).max(155),
         publishDate: z.coerce.date(),
         updatedDate: z.coerce.date().optional(),
-        category: z.enum(['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing']),
+        category: z.enum(['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing', 'reflection']),
         tags: z.array(z.string()).default([]),
         heroImage: image().optional(),
         heroAlt: z.string().optional(),
