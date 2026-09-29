@@ -114,9 +114,17 @@ const recent = allArticles.filter((a) => a.id !== featured?.id).slice(0, 6);
   }
 
   .recent {
+    /* No padding-block here on purpose: each ArticleCard already carries
+       its own padding-block (--space-6), so a wrapper padding-top here
+       used to STACK on top of the first card's own padding-top (plus
+       .featured's padding-bottom above it), making the gap after the
+       featured article ~1.5x bigger than the gap between any two
+       regular cards. Removing it makes every gap in the list the
+       same — each card's own top/bottom padding is the only spacing,
+       consistently, on both desktop and mobile (no media query was
+       involved in the original bug). */
     max-width: 56rem;
     margin-inline: auto;
-    padding-block: var(--space-6);
   }
 
   .capture-section {

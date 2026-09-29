@@ -84,6 +84,36 @@ const links = [
           </li>
         ))
       }
+      <li>
+        <button type="button" id="theme-toggle-mobile" class="mobile-theme-toggle">
+          <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M20.5 14.5a8.5 8.5 0 1 1-9-13 7 7 0 0 0 9 13Z"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6" />
+            <path
+              d="M12 2.5v2.5M12 19v2.5M4.4 4.4l1.8 1.8M17.8 17.8l1.8 1.8M2.5 12H5M19 12h2.5M4.4 19.6l1.8-1.8M17.8 6.2l1.8-1.8"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+            />
+          </svg>
+          {/* Text-driven, not JS-driven — two spans, CSS shows whichever
+              matches the current [data-theme], same pattern as the icons.
+              No aria-label needed: with no other visible text, the
+              button's accessible name already comes from whichever span
+              is showing ("Dark mode" / "Light mode"), which correctly
+              names the action a click performs. */}
+          <span class="mobile-theme-toggle__label mobile-theme-toggle__label--to-dark">Dark mode</span>
+          <span class="mobile-theme-toggle__label mobile-theme-toggle__label--to-light">Light mode</span>
+        </button>
+      </li>
     </ul>
   </nav>
 </header>
@@ -137,6 +167,30 @@ const links = [
     })();
 */}
 <script is:inline>(function(){var b=document.getElementById('menu-toggle'),m=document.getElementById('mobile-menu');if(!b||!m)return;b.onclick=function(){var o=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',String(!o));b.setAttribute('aria-label',o?'Open menu':'Close menu');m.hidden=o}})();</script>
+
+{/*
+  Click handler for the mobile-menu's dark-mode toggle row. Simpler than
+  the desktop button's script: no aria-pressed/aria-label sync needed,
+  since this button's accessible name already comes from its visible
+  text label ("Dark mode"/"Light mode"), which is CSS-driven off
+  [data-theme] exactly like the icons — nothing here needs to run on
+  load, only on click. Unminified for reference:
+
+    (function () {
+      var btn = document.getElementById('theme-toggle-mobile');
+      if (!btn) return;
+      var html = document.documentElement;
+      btn.onclick = function () {
+        var dark = html.dataset.theme !== 'dark';
+        if (dark) html.dataset.theme = 'dark';
+        else delete html.dataset.theme;
+        try {
+          localStorage.setItem('cuerpo_theme', dark ? 'dark' : 'light');
+        } catch (e) {}
+      };
+    })();
+*/}
+<script is:inline>(function(){var b=document.getElementById('theme-toggle-mobile'),e=document.documentElement;if(!b)return;b.onclick=function(){var d=e.dataset.theme!=='dark';if(d)e.dataset.theme='dark';else delete e.dataset.theme;try{localStorage.setItem('cuerpo_theme',d?'dark':'light')}catch(x){}}})();</script>
 
 <style>
   .site-header {
@@ -280,11 +334,11 @@ const links = [
     transform: translateY(-1px);
   }
 
-  /* Mobile: hamburger (left) / wordmark (center) / toggle+Subscribe (right).
-     .site-header__actions already contains exactly [nav, theme-toggle,
-     subscribe-button] — hiding the nav here leaves the toggle and button
-     together as a pair, with no DOM restructuring needed to achieve that
-     grouping. */
+  /* Mobile: hamburger (left) / wordmark (center) / Subscribe (right). The
+     round dark-mode toggle does NOT appear in this row on mobile at all —
+     it moves into the drawer itself (see .mobile-theme-toggle below),
+     styled as a labeled row rather than an icon-only button. Desktop is
+     untouched: .theme-toggle keeps showing there exactly as before. */
   @media (max-width: 40rem) {
     .site-header__row {
       display: grid;
@@ -305,6 +359,10 @@ const links = [
       display: none;
     }
 
+    .theme-toggle {
+      display: none;
+    }
+
     .site-header__actions {
       justify-self: end;
       gap: var(--space-3);
@@ -317,6 +375,10 @@ const links = [
 
     .mobile-menu:not([hidden]) {
       display: block;
+      /* Same horizontal rhythm as the rest of the page — .container
+         (used everywhere else) sets this same --space-5 side padding;
+         the drawer isn't wrapped in .container, so it needs its own. */
+      padding-inline: var(--space-5);
       padding-block: var(--space-4);
       border-top: 1px solid var(--hairline);
     }
@@ -333,6 +395,39 @@ const links = [
       text-decoration: none;
       font-weight: 600;
       color: var(--ink);
+    }
+
+    .mobile-theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: 0;
+      border: none;
+      background: none;
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: var(--step-0);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .mobile-theme-toggle .theme-toggle__icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Label text is CSS-driven off [data-theme], exactly like the icons —
+       no JS needed to pick which one shows. */
+    .mobile-theme-toggle__label--to-light {
+      display: none;
+    }
+
+    :global([data-theme='dark']) .mobile-theme-toggle__label--to-dark {
+      display: none;
+    }
+
+    :global([data-theme='dark']) .mobile-theme-toggle__label--to-light {
+      display: inline;
     }
   }
 </style>

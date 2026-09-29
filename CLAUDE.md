@@ -752,6 +752,73 @@ desktop correctness rests on the structural diff-check described above rather
 than a fresh screenshot; it was fully visually verified in session 2 and nothing
 in that code path changed.
 
+## v1.1 redesign, second round of post-session-2 fixes
+
+**Status: built on branch `redesign`, not merged, not live.** Three more fixes
+from owner review of the previous preview.
+
+**Latest section spacing (`src/pages/index.astro`):** the gap after the
+featured article was visibly bigger than the gaps between the other article
+titles, on both desktop and mobile. Traced it exactly rather than guessing:
+`.recent`'s own `padding-block: var(--space-6)` was stacking on top of the
+*first* `ArticleCard`'s own `padding-block` (plus `.featured`'s
+`padding-bottom` above it) — three paddings compounding at that one boundary
+(96px) versus two at every other boundary between cards (64px). Fixed by
+removing `.recent`'s `padding-block` entirely — each `ArticleCard` already
+carries its own consistent spacing, so the wrapper doesn't need to add more.
+No media query was involved in the original bug, so none was needed in the fix.
+
+**Mobile menu padding (`Header.astro`):** the drawer wasn't wrapped in
+`.container` (the class every other section on the page uses for its side
+padding), so its links sat flush against the screen edges. Added
+`padding-inline: var(--space-5)` directly to `.mobile-menu` — the same value
+`.container` uses — rather than introducing a wrapper element for it.
+
+**Dark-mode toggle moved into the mobile menu, out of the mobile header
+entirely:** the round icon-only button is now `display: none` under the
+40rem breakpoint (desktop is completely untouched — same button, same
+script, same everything). A second toggle, `#theme-toggle-mobile`, is the
+last item in the drawer's list: icon on the left (reusing the exact same
+`.theme-toggle__icon--moon/--sun` classes as the desktop button, so the
+existing light/dark CSS swap rules apply to it automatically, no new icon
+CSS needed), and a text label to its right — **CSS-driven, not
+JS-driven**: two `<span>`s ("Dark mode" / "Light mode"), shown/hidden off
+`[data-theme]` the same way the icons already are, so there's no need to
+sync any text via JavaScript on load. **Accessibility choice worth
+recording:** this button has no `aria-label` — with the icon marked
+`aria-hidden` and no other visible text, its accessible name comes directly
+from whichever label span is currently showing, which already names the
+action correctly ("Dark mode" / "Light mode"). Adding a separate, possibly
+differently-worded `aria-label` on top of that would risk a "Label in Name"
+mismatch (a real WCAG failure — the accessible name not containing the
+visible text) for no benefit, since the desktop button (which *does* need
+`aria-label`, having no visible text at all) already covers that case
+correctly. New click-handler script: 287 bytes, syntax verified with
+`node -c` before trusting it (same discipline as every prior minified
+script this project has shipped) — and simpler than the desktop button's
+442-byte version, precisely because it doesn't need to sync any
+`aria-pressed`/`aria-label` state on load.
+
+**Running total of inline theme/menu JS, worth being honest about:** 191
+(head, flash-prevention) + 442 (desktop toggle) + 298 (hamburger open/close)
++ 287 (mobile toggle) = **1218 bytes**. This is over the "well under 1 KB"
+figure quoted in session 2 — but that figure was scoped to the dark-mode
+toggle alone, which is still just 191+442 = 633 bytes, unchanged. The
+hamburger menu and the second toggle variant are new, separate features
+added since, not scope creep on the original budget.
+
+**Verified:** `npm run build` and `astro check` pass clean. **The browser
+extension used for visual verification in prior sessions was not connected
+this session**, despite retrying — rather than skip verification, checked
+the actual compiled output directly and confirmed, byte for byte, that:
+`.recent`'s padding-block is gone; `.mobile-menu:not([hidden])` carries
+`padding-inline: var(--space-5)`; `.site-header__nav` and `.theme-toggle`
+are both `display: none` inside the same mobile media-query rule; and the
+label spans' CSS resolves correctly for both the default and
+`[data-theme="dark"]` cases. This confirms the CSS is structurally correct
+but is not the same as watching it render — worth a real visual pass next
+time the extension connects.
+
 **Next up (redesign rollout):** session 3 — Home page (hero photo card, Start
 here tiles, Latest, Series band, Reflection strip, newsletter band).
 `docs/UPDATE-WORKFLOW.md` section 7, step 3.
