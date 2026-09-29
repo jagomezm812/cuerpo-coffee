@@ -693,6 +693,65 @@ tooling cooperates. Keyboard focus was similarly confirmed programmatically
 after synthetic Tab keypresses turned out not to move focus reliably in this
 automation context — a tooling quirk, not a site bug.
 
+## v1.1 redesign, post-session-2 fixes: Latest section, mobile header, footer headings
+
+**Status: built on branch `redesign`, not merged, not live.** Three fixes from
+owner review of the session 2 preview, still within session 2/3's scope (not a
+new numbered session).
+
+**Homepage "Latest" section (`src/pages/index.astro`):** the featured article's
+title no longer renders larger than the recent-list titles in `ArticleCard.astro`.
+Checked what was actually different before changing anything: the shared global
+`h2, h3` rule (`global.css`, from session 1) already gives both the same Manrope
+weight and letter-spacing — `font-size` was the *only* thing making the featured
+title look bigger (`--step-2` vs. `--step-1`). Fixed with a single scoped
+override (`.featured h2 { font-size: var(--step-1) }`), not by changing the
+heading level — the featured title stays a real `<h2>`, not demoted to `<h3>`,
+so the page's heading levels still don't skip (h1 → h2 → h3 for each
+`ArticleCard`). The layout itself (one card, then a list) is untouched.
+
+**Mobile header (`src/components/Header.astro`):** a hamburger button (left)
+toggles a simple in-flow drawer containing the same Articles/About links
+(rendered from the same array as the desktop nav, so the two can't drift out of
+sync); the wordmark centers; the dark-mode toggle sits directly next to
+Subscribe on the right — achieved by simply hiding `.site-header__nav` at the
+mobile breakpoint, since `.site-header__actions` already contained exactly
+`[nav, theme-toggle, subscribe-button]` with no DOM restructuring needed to get
+that pairing. Icon swaps hamburger↔X the same CSS-attribute-selector way the
+theme toggle already swaps moon↔sun (`[aria-expanded="true"]`, no JS). New
+click-handler script: 298 bytes, hand-minified and verified with `node -c`
+before trusting it (worth doing every time — the very first minified version of
+this exact pattern, back in session 2, had a brace-counting typo that `node -c`
+caught immediately). **Confirmed, not just assumed, that desktop is unaffected:**
+every new CSS rule is either shared between both toggle buttons (harmless, since
+`.menu-toggle` stays `display: none` outside the mobile media query) or
+explicitly inside `@media (max-width: 40rem)` — checked via the actual diff, not
+by re-eyeballing a screenshot.
+
+**Footer heading hierarchy (`src/components/Footer.astro`):** "Read"/"Cuerpo"
+were rendering *smaller* than the links underneath them (the links had no
+explicit `font-size` and were inheriting the body's `--step-0`, larger than the
+headings' `--step--1`) — backwards for something meant to lead a list. Fixed by
+raising the headings to `--step-1` and giving the links an explicit, smaller
+`--step--1`, so the hierarchy is deliberate or both ends, not accidental on
+either. **Deliberately scoped to `Footer.astro`'s own component styles only** —
+per instruction, this does not touch the shared small-uppercase-label pattern
+used elsewhere (Start here, Series, Newsletter), which is correct as-is: those
+sit *above* a much bigger heading and are supposed to stay small, unlike the
+footer's headings, which have no bigger heading below them and must actually
+function as the heading themselves.
+
+**Verified:** `npm run build` and `astro check` pass clean. Checked in a real
+browser at an actual mobile viewport this time — the automation tool happened to
+render at ~500px width this session (unlike session 2, where the resize tool
+didn't work at all) — confirming the hamburger/drawer, centered wordmark, and
+toggle+Subscribe pairing all work as intended, in both themes. Desktop width
+could not be re-screenshotted this session either (the resize tool still doesn't
+actually change the viewport — tried again, same result as session 2), so
+desktop correctness rests on the structural diff-check described above rather
+than a fresh screenshot; it was fully visually verified in session 2 and nothing
+in that code path changed.
+
 **Next up (redesign rollout):** session 3 — Home page (hero photo card, Start
 here tiles, Latest, Series band, Reflection strip, newsletter band).
 `docs/UPDATE-WORKFLOW.md` section 7, step 3.

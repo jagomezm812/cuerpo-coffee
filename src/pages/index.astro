@@ -89,6 +89,15 @@ const recent = allArticles.filter((a) => a.id !== featured?.id).slice(0, 6);
     margin-bottom: var(--space-2);
   }
 
+  .featured h2 {
+    /* Same visual treatment as ArticleCard's h3 titles (weight and
+       letter-spacing already match via the shared global h2,h3 rule —
+       font-size was the only thing making this look "featured"/larger).
+       Still a real <h2>, not demoted to <h3>, so the page's heading
+       levels don't skip (h1 -> h2 -> h3 for each ArticleCard). */
+    font-size: var(--step-1);
+  }
+
   .featured h2 a {
     color: var(--ink);
     text-decoration: none;

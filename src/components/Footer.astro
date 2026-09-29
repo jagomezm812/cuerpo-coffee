@@ -103,7 +103,16 @@ const cuerpoLinks = [
   }
 
   .site-footer__heading {
-    font-size: var(--step--1);
+    /* Footer-only: these need to actually function as the heading for
+       their column (there's no bigger heading below them here), unlike
+       the shared small-uppercase-label pattern used elsewhere on the site
+       (Start here, Series, Newsletter), which sits above a much bigger
+       heading and stays small on purpose. This is a local override in
+       Footer.astro's own scoped styles, not a change to that shared
+       pattern. Bumped from --step--1 (smaller than the links below it —
+       the "backwards" hierarchy) to --step-1, clearly larger than the
+       links' own explicit --step--1. */
+    font-size: var(--step-1);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.14em;
@@ -120,6 +129,7 @@ const cuerpoLinks = [
   }
 
   .site-footer__column a {
+    font-size: var(--step--1);
     color: var(--ink-on-dark);
     text-decoration: none;
   }

@@ -3,6 +3,8 @@
 // list in later sessions, once those pages/features are actually built —
 // docs/DESIGN-SYSTEM.md's full header anatomy (wordmark, four links,
 // search, toggle, Subscribe) is the eventual target, not today's build.
+// Rendered twice below (desktop inline nav + mobile drawer) from this one
+// array, so there's no risk of the two falling out of sync.
 const links = [
   { href: '/articles', label: 'Articles' },
   { href: '/about', label: 'About' },
@@ -11,11 +13,28 @@ const links = [
 
 <header class="site-header">
   <div class="container site-header__row">
+    <button
+      type="button"
+      id="menu-toggle"
+      class="menu-toggle"
+      aria-label="Open menu"
+      aria-expanded="false"
+      aria-controls="mobile-menu"
+    >
+      <svg class="menu-toggle__icon menu-toggle__icon--open" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+      <svg class="menu-toggle__icon menu-toggle__icon--close" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+    </button>
+
     <a href="/" class="wordmark">
       <span class="wordmark__cuerpo">Cuerpo</span> <span class="wordmark__coffee">Coffee</span>
     </a>
+
     <div class="site-header__actions">
-      <nav aria-label="Primary">
+      <nav aria-label="Primary" class="site-header__nav">
         <ul class="site-header__links">
           {
             links.map((link) => (
@@ -55,11 +74,24 @@ const links = [
       <a href="/subscribe" class="subscribe-button">Subscribe</a>
     </div>
   </div>
+
+  <nav id="mobile-menu" class="mobile-menu" aria-label="Primary" hidden>
+    <ul>
+      {
+        links.map((link) => (
+          <li>
+            <a href={link.href}>{link.label}</a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
 </header>
 
 {/*
-  Click handler for the toggle. Hand-minified like BaseHead.astro's
-  script (is:inline ships both byte-for-byte) — unminified for reference:
+  Click handler for the dark-mode toggle. Hand-minified like
+  BaseHead.astro's script (is:inline ships both byte-for-byte) —
+  unminified for reference:
 
     (function () {
       var btn = document.getElementById('theme-toggle');
@@ -85,6 +117,26 @@ const links = [
     })();
 */}
 <script is:inline>(function(){var b=document.getElementById('theme-toggle');if(!b)return;var e=document.documentElement;function s(d){b.setAttribute('aria-pressed',d);b.setAttribute('aria-label',d?'Switch to light theme':'Switch to dark theme')}s(e.dataset.theme==='dark');b.onclick=function(){var d=e.dataset.theme!=='dark';if(d)e.dataset.theme='dark';else delete e.dataset.theme;s(d);try{localStorage.setItem('cuerpo_theme',d?'dark':'light')}catch(x){}}})();</script>
+
+{/*
+  Mobile menu open/close. No client-side routing on this static site, so
+  clicking a link inside the drawer navigates to a new page and the drawer
+  naturally resets to closed — no extra close-on-navigate logic needed.
+  Unminified for reference:
+
+    (function () {
+      var btn = document.getElementById('menu-toggle');
+      var menu = document.getElementById('mobile-menu');
+      if (!btn || !menu) return;
+      btn.onclick = function () {
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!open));
+        btn.setAttribute('aria-label', open ? 'Open menu' : 'Close menu');
+        menu.hidden = open;
+      };
+    })();
+*/}
+<script is:inline>(function(){var b=document.getElementById('menu-toggle'),m=document.getElementById('mobile-menu');if(!b||!m)return;b.onclick=function(){var o=b.getAttribute('aria-expanded')==='true';b.setAttribute('aria-expanded',String(!o));b.setAttribute('aria-label',o?'Open menu':'Close menu');m.hidden=o}})();</script>
 
 <style>
   .site-header {
@@ -145,7 +197,8 @@ const links = [
     text-underline-offset: 0.2em;
   }
 
-  .theme-toggle {
+  .theme-toggle,
+  .menu-toggle {
     display: grid;
     place-items: center;
     width: 40px;
@@ -158,16 +211,19 @@ const links = [
     cursor: pointer;
   }
 
-  .theme-toggle:hover {
+  .theme-toggle:hover,
+  .menu-toggle:hover {
     border-color: var(--ink);
   }
 
-  .theme-toggle__icon {
+  .theme-toggle__icon,
+  .menu-toggle__icon {
     width: 18px;
     height: 18px;
   }
 
-  /* Only one icon shows at a time — CSS-driven off [data-theme], no JS. */
+  /* Only one icon shows at a time in each toggle — CSS-driven off
+     [data-theme]/[aria-expanded], no JS needed for the icon swap itself. */
   .theme-toggle__icon--sun {
     display: none;
   }
@@ -178,6 +234,27 @@ const links = [
 
   :global([data-theme='dark']) .theme-toggle__icon--sun {
     display: block;
+  }
+
+  .menu-toggle__icon--close {
+    display: none;
+  }
+
+  .menu-toggle[aria-expanded='true'] .menu-toggle__icon--open {
+    display: none;
+  }
+
+  .menu-toggle[aria-expanded='true'] .menu-toggle__icon--close {
+    display: block;
+  }
+
+  /* Desktop default: no hamburger, links shown inline, drawer never shown. */
+  .menu-toggle {
+    display: none;
+  }
+
+  .mobile-menu {
+    display: none;
   }
 
   .subscribe-button {
@@ -201,5 +278,61 @@ const links = [
 
   .subscribe-button:hover {
     transform: translateY(-1px);
+  }
+
+  /* Mobile: hamburger (left) / wordmark (center) / toggle+Subscribe (right).
+     .site-header__actions already contains exactly [nav, theme-toggle,
+     subscribe-button] — hiding the nav here leaves the toggle and button
+     together as a pair, with no DOM restructuring needed to achieve that
+     grouping. */
+  @media (max-width: 40rem) {
+    .site-header__row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+    }
+
+    .menu-toggle {
+      display: grid;
+    }
+
+    .wordmark {
+      justify-self: center;
+      text-align: center;
+    }
+
+    .site-header__nav {
+      display: none;
+    }
+
+    .site-header__actions {
+      justify-self: end;
+      gap: var(--space-3);
+    }
+
+    .subscribe-button {
+      height: 40px;
+      padding-inline: var(--space-4);
+    }
+
+    .mobile-menu:not([hidden]) {
+      display: block;
+      padding-block: var(--space-4);
+      border-top: 1px solid var(--hairline);
+    }
+
+    .mobile-menu ul {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .mobile-menu a {
+      text-decoration: none;
+      font-weight: 600;
+      color: var(--ink);
+    }
   }
 </style>
