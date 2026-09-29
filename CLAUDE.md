@@ -1647,11 +1647,105 @@ confirms it visually too.
 each time, confirmed via `git status` showing no diff on `package.json`/
 `package-lock.json` afterward.
 
-**Next up (redesign rollout):** the Lighthouse + contrast report across the
-site (the one piece of session 5's original scope not done above), then
-session 6 — go live: merge `redesign` into `main` after merging latest
-`main` into it first, tag `v1.1-redesign`, final CHANGELOG entry.
-`docs/UPDATE-WORKFLOW.md` section 7, steps 5 (tail) and 6.
+## v1.1 redesign, pre-session-6 audit: Lighthouse + contrast report
+
+**Status: audit only, no code changes — nothing on `redesign` needed
+fixing.** The one piece of session 5's original scope left undone,
+finished before going live: Lighthouse (mobile) and a full contrast report
+across the redesign, both themes, requested explicitly rather than
+skipped again.
+
+**Pages audited:** Home, the article template (`a-simple-pour-over-
+method-for-beginners`, category `methods` — chosen specifically because it
+exercises the sidebar: it's 2+ h2s so the table of contents renders, and
+it's position 2 in the "Beginner Basics" series so the series rail renders
+too, not just a bare article body), Explore (with this session's search
+fix in place), and a Reflection essay. No real reflection essay is
+published yet, so the same disposable local-fixture approach from the
+session 5 audit was reused: a `draft: false` fixture with two h2s and a
+blockquote, built, audited, then deleted before anything was committed —
+confirmed via `git status` and a final clean rebuild (back to the real 30
+routes / 4 indexed pages) that nothing from it leaked into the branch.
+
+**Method:** `puppeteer-core` and `lighthouse`, both installed `--no-save`
+and removed immediately after use (confirmed via `git status` showing no
+diff on `package.json`/`package-lock.json` afterward, same discipline as
+every check this redesign). Lighthouse's own documented Puppeteer
+integration (`lighthouse(url, flags, config, page)`, passing an
+already-open page) made it possible to drive the *same* browser tab for
+both themes: `page.emulateMediaFeatures([{name: 'prefers-color-scheme',
+value: theme}])` before each run, so the site's own `prefers-color-scheme`
+logic in `BaseHead.astro` picks the theme exactly the way a real visitor
+with no stored preference would, rather than needing to fake a
+`cuerpo_theme` cookie. Mobile: `formFactor: 'mobile'`, a 412×823 screen
+emulation, simulated throttling — the same profile prior sessions' one-off
+Lighthouse checks used.
+
+**Contrast, checked properly, not just via Lighthouse's own accessibility
+score:** a dedicated sweep script resolved the real computed color for
+`--olive-text`, `--olive-on-dark`, `--accent-text`, `--accent-on-dark`,
+and `--copper` at the moment each page rendered (per theme — these
+tokens' actual hex values differ between light and dark, see
+`tokens.css`), then walked every element with direct text content whose
+computed `color` matched one of those, found its real effective
+background by walking up the DOM, and computed the true WCAG contrast
+ratio (font-size/weight-aware: 3:1 for large/bold text, 4.5:1 otherwise) —
+not spot-checking the handful of pairs prior sessions already verified,
+every real occurrence actually found on each of the four pages.
+**A false positive in this method itself, caught and fixed before it was
+reported as a real bug** — worth recording since it's exactly the kind of
+self-check this file's culture already expects: the sweep's DOM walk finds
+the *first* non-transparent background above an element, but treats any
+`rgba(...)` it meets as already-opaque instead of compositing it against
+what's actually behind it. Dark mode's `--accent-tint` (`rgba(227, 173,
+132, 0.16)` — a translucent version of the *same* hue as `--accent-text`,
+unlike light mode's `--accent-tint`, which is a distinct opaque cream) hit
+this exactly: the naive calculation reported a contrast ratio of ~1
+(near-total failure) for the search dropdown's `<mark>` highlight in dark
+mode. Recomputed by hand with proper alpha compositing against what the
+tint actually sits on (the search card's `--surface-card`, `#33261d` in
+dark): **5.26:1, a genuine pass.** Checked the tint's one other real
+consumer the same way — the homepage's "New" badge (`--accent-tint` on
+`--surface-1` dark, `#1a120e`): **6.84:1, also a genuine pass.** Confirmed
+`--accent-tint` is the *only* non-shadow `rgba()` value anywhere in
+`tokens.css`/`global.css` (grepped directly), so this was the one place
+in the whole sweep the compositing gap could have mattered, and both real
+consumers of it have now been checked correctly by hand. Nothing in the
+site's own CSS was wrong here — the bug was entirely in the audit script.
+
+**Also checked: every audit Lighthouse's accessibility/performance
+categories flag individually, not just the rounded category score** (a
+category can round to 100 while still listing non-passing audits) — the
+only non-"insight"/non-informative item close to failing anywhere was
+`unused-javascript` (~0.5) on every page, always pointing at the same
+file: `client.js`, the shared React runtime. That's the pre-existing,
+explicitly disclosed, owner-approved ~70KB `LanguagePrompt` island cost
+from the i18n work (confirmed by inspecting the audit's own flagged
+URL/byte count directly, not assumed) — not a regression from anything in
+this redesign, and not something this audit's scope calls for removing.
+
+**Result: no fixes were needed anywhere.** Performance 99–100, Accessibility
+100, Best Practices 100 on every page in both themes; zero genuine
+contrast failures across olive-text, olive-on-dark, accent-text,
+accent-on-dark, and copper, in either theme, on any of the four pages —
+including surfaces never spot-checked in earlier sessions (the search
+result category pill and `<mark>` highlight, the Reflection essay's
+author-box label, the article sidebar's TOC/series-rail labels in dark
+mode). Because nothing needed changing, there's no `docs/CHANGELOG.md`
+entry for this session — that file is for changes that reach the live
+site, and this one made none.
+
+| Page | Light (perf / a11y / best-practices) | Dark (perf / a11y / best-practices) | Contrast failures | Fixes |
+|---|---|---|---|---|
+| Home | 99 / 100 / 100 | 99 / 100 / 100 | 0 | none |
+| Article (methods, with TOC + series rail) | 99 / 100 / 100 | 99 / 100 / 100 | 0 | none |
+| Explore (search fix in place) | 99 / 100 / 100 | 99 / 100 / 100 | 0 | none |
+| Reflection (temp fixture, deleted after) | 100 / 100 / 100 | 99 / 100 / 100 | 0 | none |
+
+**Next up (redesign rollout):** session 6 — go live: merge `redesign` into
+`main` after merging latest `main` into it first, tag `v1.1-redesign`,
+final CHANGELOG entry. `docs/UPDATE-WORKFLOW.md` section 7, step 6. The
+branch is now fully audited and clean going into that step.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;
