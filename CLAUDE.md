@@ -1581,6 +1581,72 @@ expected, and `Escape` hid the results panel.
 **Verified overall:** `npm run build` (30 routes, Pagefind still indexing
 4 pages) and `astro check` (0 errors/warnings/hints) both pass clean.
 
+## v1.1 redesign, post-session-5 fix: search dropdown rendering behind page content
+
+**Status: built on branch `redesign`, not merged, not live.** Owner review
+of the previous preview attached a real screenshot: the search dropdown on
+`/articles` was rendering *behind* the topic tiles below it, their
+background bleeding into the card.
+
+**Root cause, and a real mid-investigation dead end worth recording
+honestly:** `.explore-header` (an ancestor of the search box) carries
+`rise-in`. `animation-fill-mode: both` keeps that animation's effect on
+`transform` applied indefinitely after it finishes — confirmed directly,
+`getComputedStyle(.explore-header).transform` reports a non-`none` matrix
+forever post-animation, not just while visibly running. Per the CSS
+stacking-context rules, that silently promotes the header to its own,
+unintentional stacking context, which traps the search dropdown's own
+`z-index` inside it — no `z-index` value on the dropdown itself could
+ever have won against `.topics-band` below, because it was never actually
+competing against it at the same level.
+**First attempt didn't work, and the check that revealed that mattered:**
+changed the `rise-in`/`photo-settle` keyframes' `to` state from
+`translateY(0)`/`scale(1)` to `transform: none` (visually identical, but
+only a static `transform: none` normally avoids the stacking-context
+trigger). Measured before and after: `getComputedStyle` reported the
+*exact same* non-`none` matrix either way. Kept the change anyway (it's
+still a real, harmless correctness improvement — the CSS now says what it
+means), but it does not fix this bug on its own, and the comments in
+`global.css` say so plainly rather than repeating the original, disproven
+claim.
+**The actual fix:** `.explore-header` (`src/pages/articles/index.astro`)
+now gets an explicit `position: relative; z-index: 30` — the same value
+`.search__results` uses (see the new sitewide z-index scale, documented
+once in `global.css` above `.language-prompt`: 30 for this dropdown, 60
+for `ReadingProgress`, 100 for the language prompt — cross-referenced from
+`ReadingProgress.astro` too, so a future addition has one place to check
+before picking a number). Making the header itself an intentional,
+correctly-ranked stacking context lets its whole subtree — dropdown
+included — win against `.topics-band` directly, regardless of exactly how
+the animation's own accidental context forms.
+**A second dead end, also worth recording:** the first "confirmation"
+screenshot after this fix, at a 700px-tall viewport, still looked
+ambiguous — a sliver of tile color was visible right at the dropdown's
+rounded bottom corner and the viewport's own cutoff edge, reading a lot
+like the original bug at a glance. Rather than trust that, checked two
+different ways: `document.elementFromPoint()` sampled in a grid across the
+dropdown's real interior, which returned the dropdown's own rows at every
+point except its rounded corners (correct rounded-corner rendering, not a
+stacking bug); and a taller, untruncated viewport, which showed the whole
+dropdown cleanly on top of the tiles with zero ambiguity. **Lesson worth
+keeping alongside this file's existing ones on this exact theme** (the
+Keystatic `_redirects` incident, the sidebar-overlap bug): a cropped
+screenshot of a tall floating panel can look like a stacking bug even when
+the stacking is already correct — confirm with a full, untruncated view or
+a real hit-test, not a screenshot that happens to cut through the panel
+right where its rounded corner is.
+**Verified for real, all three surfaces asked for:** grid `elementFromPoint`
+hit-testing returned zero leaks (elements other than the dropdown's own
+rows/corners) in light mode, dark mode (toggled with the real button), and
+a 390px mobile viewport — and a full, untruncated screenshot of each
+confirms it visually too.
+
+**Verified overall:** `npm run build` (30 routes, Pagefind still indexing
+4 pages) and `astro check` (0 errors/warnings/hints) both pass clean.
+`puppeteer-core` installed `--no-save` and removed immediately after use
+each time, confirmed via `git status` showing no diff on `package.json`/
+`package-lock.json` afterward.
+
 **Next up (redesign rollout):** the Lighthouse + contrast report across the
 site (the one piece of session 5's original scope not done above), then
 session 6 — go live: merge `redesign` into `main` after merging latest

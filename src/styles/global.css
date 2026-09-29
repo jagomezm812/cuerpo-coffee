@@ -98,6 +98,28 @@ body {
   page load, which stops feeling like "entrance polish" and starts feeling
   like the page is slow. Capping at 3 keeps the same 80ms rhythm for the
   first few items and lets the rest settle together.
+
+  The `to` state is `transform: none`, not `transform: translateY(0)` —
+  those look visually identical but are not the same authored value, and
+  a static (non-animated) `transform: none` doesn't trigger a new
+  stacking context the way any other transform value does. Changed while
+  chasing a real bug: the Explore page's search dropdown was rendering
+  behind the topic tiles below it, and .explore-header (an ancestor of
+  the dropdown) carries `rise-in`.
+  **Honest limitation, checked rather than assumed away:** this change on
+  its own did NOT fix that bug. Measured directly, before and after: with
+  `animation-fill-mode: both` holding the animation's end state forever,
+  `getComputedStyle(.explore-header).transform` reports
+  `matrix(1,0,0,1,0,0)` either way — `none` vs `translateY(0)` as the
+  keyframe's authored endpoint made no difference to what the browser
+  reports once a fill-mode-held CSS animation is involved, unlike a plain
+  static style. Kept anyway, since it's still a real, harmless
+  correctness improvement (the *intent* — "no transform" — is now stated
+  accurately) and may matter for other engines/scenarios even though it
+  wasn't the fix here. The actual fix for the dropdown bug is a
+  deliberate, explicit z-index promotion on `.explore-header` itself —
+  see that comment in src/pages/articles/index.astro for what was
+  actually verified to work, and by which method.
 */
 @keyframes rise-in {
   from {
@@ -106,7 +128,7 @@ body {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -132,13 +154,19 @@ body {
   applied to a card that also carries overlaid text (that would zoom the
   text too), which is why Home's hero-card (text over a color fill) doesn't
   use this even though it visually reads as a photo space.
+
+  Same change as .rise-in above, for consistency: `to` is `transform:
+  none`, not `transform: scale(1)` — same honest caveat applies (see that
+  comment): this alone isn't confirmed to prevent the animation-fill-mode
+  stacking-context effect, just a correctness improvement kept because it
+  doesn't cost anything.
 */
 @keyframes photo-settle {
   from {
     transform: scale(1.05);
   }
   to {
-    transform: scale(1);
+    transform: none;
   }
 }
 
@@ -497,8 +525,21 @@ input {
 }
 
 /*
-  Language prompt: unscoped because it's rendered by a React island
-  (LanguagePrompt.tsx), which has no access to Astro's scoped <style> blocks.
+  Site-wide z-index scale — the complete list, so a future addition can
+  pick a value that means something relative to what's already here
+  instead of guessing. Three real values exist today, low to high:
+    30  .search__results (the Explore page's search dropdown, below) —
+        ordinary page content, but needs to sit above whatever's below
+        it, since it's position: absolute and can visually extend past
+        its own section into the next one
+    60  ReadingProgress.astro's fixed top bar (article pages only)
+    100 .language-prompt below — a global, modal-like first-visit prompt;
+        deliberately the highest, since it should never be covered by an
+        ordinary page element
+  None of these currently appear on the same page at once in practice
+  (the reading-progress bar is article-only, the search dropdown is
+  Explore-only), so this ordering is about staying coherent for whenever
+  that changes, not fixing an active conflict between them.
 */
 .language-prompt {
   position: fixed;
@@ -650,13 +691,22 @@ input {
    and the search dropdown, never at rest" — this is the one other place
    besides a card's hover state that a shadow is allowed at all. Motion:
    "dropdowns fade in over 300ms" — opacity-only, driven by the
-   .is-visible class the wiring script toggles once results exist. */
+   .is-visible class the wiring script toggles once results exist.
+
+   Post-session-6 fix, z-index 20 -> 30: the real bug wasn't actually a
+   too-low z-index here — see the .rise-in keyframe comment near the top
+   of this file for the actual root cause (an ancestor of this dropdown
+   was accidentally becoming a permanent stacking context, trapping
+   whatever z-index this had). Still bumped to a real, documented value
+   as part of the fix (see the z-index scale comment above
+   .language-prompt, earlier in this file) rather than leaving the old
+   placeholder 20. */
 .search__results {
   position: absolute;
   top: calc(100% + var(--space-2));
   left: 0;
   right: 0;
-  z-index: 20;
+  z-index: 30;
   max-height: 24rem;
   overflow-y: auto;
   background: var(--surface-card);

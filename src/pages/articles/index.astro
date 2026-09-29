@@ -106,7 +106,41 @@ const series = seriesGroups.map((group) => ({
 </Base>
 
 <style>
+  /* position: relative + z-index here is the actual fix for the search
+     dropdown rendering behind .topics-band below it — not a style choice.
+     This header carries `rise-in` (the entrance-rise animation). A CSS
+     animation with `animation-fill-mode: both` keeps its effect on
+     `transform` applied indefinitely after it finishes, and
+     `getComputedStyle(.explore-header).transform` reports a non-`none`
+     matrix forever as a result — confirmed directly, not assumed. That
+     silently promotes this header to its own, unintentional stacking
+     context, which traps the search dropdown's own z-index inside it:
+     the dropdown's z-index could never win against .topics-band no
+     matter how high it was set, because it was never actually competing
+     against it at the same level. Giving this header its own
+     *intentional* z-index (same 30 as .search__results — see the
+     z-index scale comment in global.css above .language-prompt) makes
+     its whole subtree, dropdown included, win against .topics-band
+     directly, regardless of exactly how the animation's own accidental
+     context forms.
+     Verified properly, not by eyeballing a screenshot: a short (700px)
+     viewport's screenshot of this fix looked ambiguous at first glance —
+     a sliver of tile color was visible right at the dropdown's rounded
+     bottom corner and past the viewport's own cutoff edge, which reads a
+     lot like the original bug at a glance. What actually confirmed the
+     fix: `document.elementFromPoint()` sampled across the dropdown's
+     real interior returned the dropdown's own result rows, not a tile or
+     the band, at every point except the box's own rounded corners (where
+     that's simply correct rounded-corner rendering, not a stacking
+     issue); and a taller viewport's screenshot showed the entire
+     dropdown cleanly on top of the tiles with no ambiguity at all. Worth
+     remembering: a cropped screenshot of a tall floating panel can look
+     like a stacking bug even when the stacking is already correct —
+     confirm with either a full, untruncated view or a real hit-test, not
+     a screenshot that happens to cut through the panel. */
   .explore-header {
+    position: relative;
+    z-index: 30;
     background: var(--surface-1);
     padding-block: var(--space-9) var(--space-8);
   }
