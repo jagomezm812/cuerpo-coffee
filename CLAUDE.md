@@ -964,6 +964,22 @@ the next time the extension connects, especially the hero card's text
 legibility over its flat dark fill and the tile grid's actual spacing at
 phone width.
 
+**Post-session-3 fix: hero spacing.** Owner review caught two stacked-padding
+gaps, the same class of bug as the earlier Latest-section fix. `.hero-band`
+had `padding-block: var(--space-9)` (96px top *and* bottom) — that put a
+full section-sized empty gap between the header and the hero card, which
+should instead sit close under the header (the two share white on purpose),
+and it doubled up with `.start-here-band`'s own top padding (also
+`--space-9`) to leave a 192px gap before "Start here" instead of one normal
+96px gap. Fixed the same way as before: `.hero-band` now only sets
+`padding-top: var(--space-5)` (24px, matching the card's own horizontal
+inset) and no bottom padding at all — `.start-here-band`'s existing top
+padding is left as the single source of the gap that follows. Verified in
+the compiled CSS, not just assumed: `.hero-band{padding-top:var(--space-5)}`
+with no `padding-bottom` declared, `.start-here-band{padding-block:var(--space-9)}`
+unchanged. Not width- or theme-dependent, so this applies identically on
+mobile and in both themes with no separate override needed.
+
 **Next up (redesign rollout):** session 4 — Article template (title block,
 hero, sticky table of contents, series rail, author box, Keep reading) and
 the `/articles` Explore page (topic tiles, series, tag cloud) — this is also

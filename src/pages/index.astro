@@ -150,10 +150,18 @@ function formatDate(d: Date): string {
   /* Hero: photo space 1. The card itself doubles as the photo space (a flat
      dark placeholder fill, no stock imagery) with the hero text overlaid in
      the *-on-dark tokens, inset from the band's edges by --space-5 (24px),
-     per docs/DESIGN-SYSTEM.md's "hero and photo cards inset 24px". */
+     per docs/DESIGN-SYSTEM.md's "hero and photo cards inset 24px". Only a
+     top inset of --space-5 here — the header and this band share white on
+     purpose (docs/DESIGN-SYSTEM.md's SectionBands note), so the card should
+     sit close under the header, not behind a full section-sized gap. No
+     bottom padding at all: Start Here's own top padding (--space-9, below)
+     is the single source of the gap before it — giving this band its own
+     bottom padding too would stack the two into a double-sized gap, the
+     same bug already fixed once in the Latest section
+     (docs/CHANGELOG.md's "second round of post-session-2 fixes" entry). */
   .hero-band {
     background: var(--surface-1);
-    padding-block: var(--space-9);
+    padding-top: var(--space-5);
   }
 
   .hero-wrap {
