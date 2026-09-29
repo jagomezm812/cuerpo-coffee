@@ -63,14 +63,14 @@ function formatDate(d: Date): string {
 >
   <section class="hero-band">
     <div class="hero-wrap">
-      <div class="hero-card">
+      <div class="hero-card rise-in">
         <p class="hero-card__label">Home coffee, done properly</p>
         <h1 class="hero-card__title">Coffee <em>with body.</em></h1>
         <p class="hero-card__description">
           Clear, unhurried articles that teach you to make genuinely good coffee at home — no gear
           obsession, no jargon.
         </p>
-        <div class="hero-card__actions">
+        <div class="hero-card__actions rise-in rise-in--delay-1">
           <a href="#start-here" class="btn btn--primary">Start here</a>
           <a href="/articles" class="btn btn--outline-on-dark">Read the latest</a>
         </div>
@@ -219,47 +219,9 @@ function formatDate(d: Date): string {
     flex-wrap: wrap;
   }
 
-  /* Buttons component (docs/DESIGN-SYSTEM.md): every button is neutral,
-     pill-shaped, 52px tall, Manrope 600. One primary per view; outlined
-     secondaries use border + ink (or ink-on-dark, on a dark card). */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 52px;
-    padding-inline: var(--space-6);
-    border-radius: var(--radius-pill);
-    font-weight: 600;
-    font-size: var(--step--1);
-    text-decoration: none;
-    transition: transform 200ms ease;
-  }
-
-  .btn:hover {
-    transform: translateY(-1px);
-  }
-
-  .btn--primary {
-    background: var(--button-bg);
-    color: var(--button-fg);
-    border: 1px solid var(--button-bg);
-  }
-
-  .btn--outline-on-dark {
-    background: transparent;
-    color: var(--ink-on-dark);
-    border: 1px solid var(--ink-on-dark);
-  }
-
-  .btn--outline {
-    background: transparent;
-    color: var(--ink);
-    border: 1px solid var(--border);
-  }
-
-  .btn--outline:hover {
-    border-color: var(--ink);
-  }
+  /* .btn (and .chip, below) moved to global.css in session 5 — Explore and
+     ReflectionStrip need the exact same classes, so they're defined once
+     there now, motion included. */
 
   /* Start here: cream band, three bento tiles. */
   .start-here-band {
@@ -291,29 +253,6 @@ function formatDate(d: Date): string {
     flex-wrap: wrap;
     gap: var(--space-3);
     margin-top: var(--space-6);
-  }
-
-  /* Topic chips are plain filter links, not a section label or a pillar
-     tile — the Buttons component rule applies (neutral, outlined), not the
-     olive "category pills" rule, which is about the small colored category
-     name shown per-card below (.latest-card__category). */
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    height: 44px;
-    padding-inline: var(--space-5);
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--border);
-    color: var(--ink);
-    font-size: var(--step--1);
-    font-weight: 600;
-    text-transform: capitalize;
-    text-decoration: none;
-    transition: border-color 200ms ease;
-  }
-
-  .chip:hover {
-    border-color: var(--ink);
   }
 
   .latest__list {
@@ -419,13 +358,20 @@ function formatDate(d: Date): string {
     border-color: var(--button-bg);
     color: var(--button-fg);
     border-radius: var(--radius-pill);
-    transition: transform 200ms ease;
+    transition:
+      transform 200ms ease,
+      background-color 350ms ease,
+      border-color 350ms ease;
   }
 
   .newsletter-band__inner :global(.email-capture__form button:hover) {
     background: var(--button-bg);
     border-color: var(--button-bg);
     transform: translateY(-1px);
+  }
+
+  .newsletter-band__inner :global(.email-capture__form button:active) {
+    transform: scale(0.98);
   }
 
   @media (max-width: 40rem) {
@@ -435,14 +381,6 @@ function formatDate(d: Date): string {
 
     .hero-card {
       padding: var(--space-7) var(--space-5);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .btn,
-    .chip,
-    .newsletter-band__inner :global(.email-capture__form button) {
-      transition: none;
     }
   }
 </style>

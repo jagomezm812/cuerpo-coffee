@@ -3,12 +3,15 @@
 // docs/DESIGN-SYSTEM.md's "Explore" board. Composed the way the design
 // system's page template calls for: a title block, then topic tiles, a tag
 // cloud, and the series list (all of them, unlike Home's two-card cap) —
-// no live search yet (session 5) and no flat "every article" list anymore
-// (Home's Latest, the category pages, and the tag pages already cover
-// that; Explore is a navigation/discovery page, not a duplicate listing).
+// no flat "every article" list anymore (Home's Latest, the category pages,
+// and the tag pages already cover that; Explore is a navigation/discovery
+// page, not a duplicate listing). Session 5 added free-text search
+// (SearchBox.astro, Pagefind) in the title block — categories and tags
+// stay static links, no client-side filtering of those.
 import Base from '../../layouts/Base.astro';
 import PillarTile from '../../components/PillarTile.astro';
 import SeriesBand from '../../components/SeriesBand.astro';
+import SearchBox from '../../components/SearchBox.astro';
 import { getPublishedArticles, getCategoryHref, getTagHref, getTagCounts, getArticleHref } from '../../lib/articles';
 import { getSeriesGroups } from '../../lib/series';
 
@@ -40,13 +43,16 @@ const series = seriesGroups.map((group) => ({
 ---
 
 <Base title="Articles" description="Explore every Cuerpo Coffee topic, series, and tag.">
-  <header class="explore-header">
+  <header class="explore-header rise-in">
     <div class="container">
       <p class="section-label">Explore</p>
       <h1>Every way into Cuerpo Coffee</h1>
       <p class="explore-header__standfirst">
         Start with a topic, follow a series in order, or jump straight to a tag.
       </p>
+      <div class="explore-header__search rise-in rise-in--delay-1">
+        <SearchBox />
+      </div>
     </div>
   </header>
 
@@ -98,6 +104,10 @@ const series = seriesGroups.map((group) => ({
     max-width: var(--measure);
   }
 
+  .explore-header__search {
+    margin-top: var(--space-6);
+  }
+
   .topics-band {
     background: var(--surface-2);
     padding-block: var(--space-9);
@@ -122,36 +132,12 @@ const series = seriesGroups.map((group) => ({
     margin-top: var(--space-6);
   }
 
-  /* Same neutral chip styling as Home's topic-chip row (Buttons component:
-     neutral, outlined) — filters/navigation links, not olive section
-     labels or a pillar tile. */
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    height: 44px;
-    padding-inline: var(--space-5);
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--border);
-    color: var(--ink);
-    font-size: var(--step--1);
-    font-weight: 600;
-    text-decoration: none;
-    transition: border-color 200ms ease;
-  }
-
-  .chip:hover {
-    border-color: var(--ink);
-  }
+  /* .chip moved to global.css in session 5 — Home needs the exact same
+     class. */
 
   @media (max-width: 40rem) {
     .topics__grid {
       grid-template-columns: 1fr;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .chip {
-      transition: none;
     }
   }
 </style>

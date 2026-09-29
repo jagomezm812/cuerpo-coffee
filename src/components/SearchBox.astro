@@ -1,0 +1,204 @@
+---
+// v1.1 session 5: search, via Pagefind (built at deploy time over the
+// article content — see package.json's "postbuild" script and
+// Article.astro/ReflectionArticle.astro's data-pagefind-body/-ignore
+// attributes for what actually gets indexed). No client filtering of
+// categories or tags here — those stay the static links already built in
+// session 4; this is free-text search only.
+//
+// Pagefind's own JS (~a few hundred KB, scales with index size) is
+// genuinely heavy, so it's never loaded on page load — only on the first
+// focus or keystroke in this field, via a dynamic import(). The small
+// wiring script below (which just knows *when* to trigger that import)
+// always loads; the actual Pagefind runtime does not, until interaction.
+---
+
+<div class="search">
+  <label for="search-input" class="visually-hidden">Search articles</label>
+  <input
+    type="search"
+    id="search-input"
+    class="search__input"
+    placeholder="Search articles"
+    autocomplete="off"
+    role="combobox"
+    aria-expanded="false"
+    aria-controls="search-results"
+    aria-autocomplete="list"
+  />
+  <div id="search-results" class="search__results" role="listbox" hidden></div>
+</div>
+
+{/*
+  Unminified for reference:
+
+    (function () {
+      var input = document.getElementById('search-input');
+      var results = document.getElementById('search-results');
+      if (!input || !results) return;
+
+      var pagefindPromise;
+      function loadPagefind() {
+        if (!pagefindPromise) {
+          // Fails harmlessly in `astro dev`/before a build has run
+          // Pagefind's own indexing step — there's no /pagefind/ output
+          // until then.
+          pagefindPromise = import('/pagefind/pagefind.js')
+            .then(function (mod) {
+              return mod.init().then(function () {
+                return mod;
+              });
+            })
+            .catch(function () {
+              return null;
+            });
+        }
+        return pagefindPromise;
+      }
+
+      function clear() {
+        results.innerHTML = '';
+        results.hidden = true;
+        results.classList.remove('is-visible');
+        input.setAttribute('aria-expanded', 'false');
+      }
+
+      function show() {
+        results.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+        // Next frame, so the opacity transition actually runs from the
+        // hidden state instead of jumping straight to visible.
+        requestAnimationFrame(function () {
+          results.classList.add('is-visible');
+        });
+      }
+
+      var currentTerm = '';
+
+      async function runSearch(term) {
+        currentTerm = term;
+        if (!term) {
+          clear();
+          return;
+        }
+        var pagefind = await loadPagefind();
+        if (!pagefind || currentTerm !== term) return;
+        var search = await pagefind.debouncedSearch(term);
+        if (!search || currentTerm !== term) return;
+        var items = await Promise.all(search.results.slice(0, 8).map(function (r) {
+          return r.data();
+        }));
+        if (currentTerm !== term) return;
+        if (items.length === 0) {
+          results.innerHTML = '<p class="search__empty">No results.</p>';
+        } else {
+          results.innerHTML = items
+            .map(function (item) {
+              return (
+                '<a class="search__result" href="' + item.url + '">' +
+                '<span class="search__result-title">' + item.meta.title + '</span>' +
+                '<span class="search__result-excerpt">' + item.excerpt + '</span>' +
+                '</a>'
+              );
+            })
+            .join('');
+        }
+        show();
+      }
+
+      input.addEventListener('focus', loadPagefind, { once: true });
+      input.addEventListener('input', function () {
+        runSearch(input.value.trim());
+      });
+      document.addEventListener('click', function (e) {
+        if (e.target !== input && !results.contains(e.target)) clear();
+      });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') clear();
+      });
+    })();
+*/}
+<script is:inline>(function(){var i=document.getElementById('search-input'),r=document.getElementById('search-results');if(!i||!r)return;var p;function lp(){if(!p){p=import('/pagefind/pagefind.js').then(function(m){return m.init().then(function(){return m})}).catch(function(){return null})}return p}function cl(){r.innerHTML='';r.hidden=true;r.classList.remove('is-visible');i.setAttribute('aria-expanded','false')}function sh(){r.hidden=false;i.setAttribute('aria-expanded','true');requestAnimationFrame(function(){r.classList.add('is-visible')})}var t='';async function rs(term){t=term;if(!term){cl();return}var pf=await lp();if(!pf||t!==term)return;var s=await pf.debouncedSearch(term);if(!s||t!==term)return;var items=await Promise.all(s.results.slice(0,8).map(function(x){return x.data()}));if(t!==term)return;if(items.length===0){r.innerHTML='<p class="search__empty">No results.</p>'}else{r.innerHTML=items.map(function(it){return '<a class="search__result" href="'+it.url+'"><span class="search__result-title">'+it.meta.title+'</span><span class="search__result-excerpt">'+it.excerpt+'</span></a>'}).join('')}sh()}i.addEventListener('focus',lp,{once:true});i.addEventListener('input',function(){rs(i.value.trim())});document.addEventListener('click',function(e){if(e.target!==i&&!r.contains(e.target))cl()});i.addEventListener('keydown',function(e){if(e.key==='Escape')cl()})})();</script>
+
+<style>
+  .search {
+    position: relative;
+    max-width: 28rem;
+  }
+
+  .search__input {
+    width: 100%;
+    height: 52px;
+    padding-inline: var(--space-5);
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+    background: var(--surface-card);
+    color: var(--ink);
+    font-size: var(--step--1);
+  }
+
+  .search__input::placeholder {
+    color: var(--muted);
+  }
+
+  /* Shape/space/depth (docs/DESIGN-SYSTEM.md): "shadow only on hover-lift
+     and the search dropdown, never at rest" — this is the one other place
+     besides a card's hover state that a shadow is allowed at all. Motion:
+     "dropdowns fade in over 300ms" — opacity-only, driven by the
+     .is-visible class the wiring script toggles once results exist. */
+  .search__results {
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    left: 0;
+    right: 0;
+    z-index: 20;
+    max-height: 24rem;
+    overflow-y: auto;
+    background: var(--surface-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lift);
+    padding: var(--space-2);
+    opacity: 0;
+    transition: opacity 300ms ease;
+  }
+
+  .search__results.is-visible {
+    opacity: 1;
+  }
+
+  .search__result {
+    display: block;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+  }
+
+  .search__result:hover {
+    background: var(--surface-2);
+  }
+
+  .search__result-title {
+    display: block;
+    color: var(--ink);
+    font-weight: 700;
+    font-size: var(--step--1);
+  }
+
+  .search__result-excerpt {
+    display: block;
+    color: var(--muted);
+    font-size: var(--step--1);
+    margin-top: var(--space-1);
+  }
+
+  .search__result-excerpt :global(mark) {
+    background: var(--accent-tint);
+    color: var(--accent-text);
+  }
+
+  .search__empty {
+    padding: var(--space-3) var(--space-4);
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+</style>

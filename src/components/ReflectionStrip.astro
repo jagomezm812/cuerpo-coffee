@@ -27,12 +27,12 @@ const href = getArticleHref(article);
       alt text or a caption, muted/6s-max loop if it becomes a video) once
       real photography exists.
     */}
-    <div class="reflection-strip__photo" aria-hidden="true"></div>
+    <div class="reflection-strip__photo photo-settle" aria-hidden="true"></div>
     <div class="reflection-strip__content">
       <p class="reflection-strip__label">Reflection</p>
       <h2 class="reflection-strip__title">{article.data.title}</h2>
       <p class="reflection-strip__description">{article.data.description}</p>
-      <a href={href} class="reflection-strip__cta">Read the essay</a>
+      <a href={href} class="btn btn--outline-on-dark">Read the essay</a>
     </div>
   </div>
 </section>
@@ -79,33 +79,9 @@ const href = getArticleHref(article);
     max-width: var(--measure);
   }
 
-  .reflection-strip__cta {
-    display: inline-flex;
-    align-items: center;
-    height: 52px;
-    padding-inline: var(--space-6);
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--ink-on-dark);
-    color: var(--ink-on-dark);
-    font-weight: 600;
-    font-size: var(--step--1);
-    text-decoration: none;
-    transition: transform 200ms ease;
-  }
-
-  .reflection-strip__cta:hover {
-    transform: translateY(-1px);
-  }
-
   @media (max-width: 40rem) {
     .reflection-strip__inner {
       grid-template-columns: 1fr;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .reflection-strip__cta {
-      transition: none;
     }
   }
 </style>

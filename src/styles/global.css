@@ -27,6 +27,16 @@
   src: url('/fonts/manrope-variable.woff2') format('woff2-variations');
 }
 
+/*
+  v1.1 session 5, Motion: page-to-page transitions via the CSS
+  cross-document View Transitions API — no JavaScript, per instruction.
+  Browsers that don't support it (yet) just navigate normally; there's no
+  polyfill and none is needed since navigation already worked before this.
+*/
+@view-transition {
+  navigation: auto;
+}
+
 *,
 *::before,
 *::after {
@@ -53,6 +63,70 @@ body {
   font-size: var(--step-0);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+  v1.1 session 5, Motion: "theme change: colors fade over 350ms" —
+  docs/DESIGN-SYSTEM.md. :where(*) matches everything but contributes zero
+  specificity, so this is a low-priority fallback: any element with its own
+  more-specific `transition` (cards, buttons, chips — already listed below)
+  simply overrides it for that element, rather than this rule fighting
+  those for the same property. Every other element (body, header, footer,
+  bands, surfaces, text) gets the color fade with no per-file bookkeeping.
+*/
+:where(*) {
+  transition:
+    background-color 350ms ease,
+    color 350ms ease,
+    border-color 350ms ease;
+}
+
+/*
+  Page-entrance rise (docs/DESIGN-SYSTEM.md: "hero and title blocks rise
+  18px over 700ms, staggered by 80ms, once per load"). Applied directly to
+  each page's opening block (Home's hero card, Article/Reflection's title
+  block, Explore's header) — see those files. `--delay-1` staggers a
+  secondary element within the same block (e.g. a block's own action
+  buttons) by 80ms, per the spec's stagger.
+*/
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise-in {
+  animation: rise-in 700ms ease-out both;
+}
+
+.rise-in--delay-1 {
+  animation-delay: 80ms;
+}
+
+/*
+  Photo-space settle (docs/DESIGN-SYSTEM.md: "photo spaces settle from
+  scale 1.05 over 1.4s"). Only for actual photo/image elements — never
+  applied to a card that also carries overlaid text (that would zoom the
+  text too), which is why Home's hero-card (text over a color fill) doesn't
+  use this even though it visually reads as a photo space.
+*/
+@keyframes photo-settle {
+  from {
+    transform: scale(1.05);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.photo-settle {
+  animation: photo-settle 1.4s ease-out both;
+  overflow: hidden;
 }
 
 img,
@@ -189,6 +263,95 @@ input {
 }
 
 /*
+  Buttons component (docs/DESIGN-SYSTEM.md): pill-shaped, 52px, Manrope
+  600. Every button is neutral — never filled with olive or copper. Moved
+  here from Home's index.astro in session 5 once Explore and ReflectionStrip
+  needed the exact same classes too (the "extract when a second thing needs
+  it" move already made once for .section-label and the pillar--* colors).
+  Motion: hover lifts 1px over 200ms, press scales to .98 — docs/
+  DESIGN-SYSTEM.md's Motion section, explicit for buttons and chips (cards
+  get their own, different 4px-lift treatment, declared per component).
+*/
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  padding-inline: var(--space-6);
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  font-size: var(--step--1);
+  text-decoration: none;
+  transition:
+    transform 200ms ease,
+    background-color 350ms ease,
+    color 350ms ease,
+    border-color 350ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn--primary {
+  background: var(--button-bg);
+  color: var(--button-fg);
+  border: 1px solid var(--button-bg);
+}
+
+.btn--outline-on-dark {
+  background: transparent;
+  color: var(--ink-on-dark);
+  border: 1px solid var(--ink-on-dark);
+}
+
+.btn--outline {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+
+.btn--outline:hover {
+  border-color: var(--ink);
+}
+
+/* Topic/tag chips: neutral, outlined filter links (Buttons component:
+   "chips for filters"), not the olive "category pills" rule (a plain-text
+   label, declared per component where it's used). Same motion as buttons,
+   at the chip's own 44px height. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: var(--step--1);
+  font-weight: 600;
+  text-transform: capitalize;
+  text-decoration: none;
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    background-color 350ms ease,
+    color 350ms ease;
+}
+
+.chip:hover {
+  border-color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.chip:active {
+  transform: scale(0.98);
+}
+
+/*
   Email capture: unscoped (not in EmailCapture.astro's own <style>) because
   the mid-article placement is raw HTML injected by a remark plugin
   (src/lib/remark-inline-subscribe.mjs) into the Markdown AST, not an Astro
@@ -238,12 +401,20 @@ input {
   color: var(--paper);
   font-weight: 500;
   cursor: pointer;
-  transition: background 150ms ease;
+  transition:
+    transform 200ms ease,
+    background-color 350ms ease,
+    border-color 350ms ease;
 }
 
 .email-capture__form button:hover {
   background: var(--espresso);
   border-color: var(--espresso);
+  transform: translateY(-1px);
+}
+
+.email-capture__form button:active {
+  transform: scale(0.98);
 }
 
 .email-capture__form button:disabled {
@@ -350,5 +521,32 @@ input {
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-3);
+  }
+}
+
+/*
+  v1.1 session 5, Motion: "everything switches off under
+  prefers-reduced-motion" — with no exceptions, per instruction. Rather
+  than trust every current and future per-component
+  `@media (prefers-reduced-motion: reduce) { transition: none }` rule to
+  cover every case (easy to miss one — this codebase already has several,
+  kept as harmless redundancy), this is the actual guarantee: the
+  well-established, `!important`-backed pattern that collapses every
+  transition and animation on the page to effectively nothing, regardless
+  of which rule declared it or how specific that rule was. `!important` is
+  used deliberately here, the one place in this codebase it is — this is
+  exactly the kind of cross-cutting accessibility override it exists for,
+  not a specificity shortcut. Verified empirically (not just asserted) via
+  a headless-Chrome check with prefers-reduced-motion emulated — see
+  CLAUDE.md's session 5 notes.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

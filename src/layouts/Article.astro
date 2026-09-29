@@ -6,6 +6,10 @@
 // rail (only if the article belongs to one), an author box, and "Keep
 // reading". The mid-article and end-of-article newsletter captures are
 // unchanged from before this session — same component, same placement.
+// Session 5: data-pagefind-body scopes Pagefind's index to this template's
+// actual written content (title block, hero, body) — data-pagefind-ignore
+// on the sidebar/capture/author/keep-reading sections keeps chrome-like
+// boilerplate (repeated on every page) out of search results and excerpts.
 import type { CollectionEntry } from 'astro:content';
 import Base from './Base.astro';
 import Prose from '../components/Prose.astro';
@@ -51,8 +55,8 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
   <ReadingProgress />
 
   <div class="article-band">
-  <article class="container article" data-reading-progress-target>
-    <header class="article__header">
+  <article class="container article" data-reading-progress-target data-pagefind-body>
+    <header class="article__header rise-in">
       <p class={`category-pill pillar--${category}`}>{category}</p>
       <h1>{title}</h1>
       <p class="article__standfirst">{description}</p>
@@ -82,20 +86,20 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
         <Image
           src={heroImage}
           alt={heroAlt ?? ''}
-          class="article__hero"
+          class="article__hero photo-settle"
           widths={[480, 768, 1200]}
           sizes="(min-width: 72rem) 72rem, 100vw"
           format="avif"
         />
       ) : (
-        <div class="article__hero article__hero--placeholder" aria-hidden="true" />
+        <div class="article__hero article__hero--placeholder photo-settle" aria-hidden="true" />
       )
     }
 
     <div class="article__layout">
       {
         (h2Count >= 2 || seriesGroup) && (
-          <aside class="article__sidebar">
+          <aside class="article__sidebar" data-pagefind-ignore>
             {h2Count >= 2 && <TableOfContents headings={headings} />}
             {seriesGroup && <SeriesRail group={seriesGroup} currentId={article.id} />}
           </aside>
@@ -107,11 +111,11 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
           <slot />
         </Prose>
 
-        <div class="article__capture">
+        <div class="article__capture" data-pagefind-ignore>
           <EmailCapture />
         </div>
 
-        <div class="article__author">
+        <div class="article__author" data-pagefind-ignore>
           <AuthorBox name={author.name} bio={author.bio} />
         </div>
       </div>
@@ -119,7 +123,7 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
 
     {
       relatedArticles.length > 0 && (
-        <section class="article__keep-reading">
+        <section class="article__keep-reading" data-pagefind-ignore>
           <p class="section-label">Keep reading</p>
           <h2>More from Cuerpo Coffee</h2>
           <div class="keep-reading__grid">
@@ -264,7 +268,9 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
     color: var(--ink);
     transition:
       transform 280ms ease,
-      box-shadow 280ms ease;
+      box-shadow 280ms ease,
+      background-color 350ms ease,
+      color 350ms ease;
   }
 
   .keep-reading__tile:hover {
