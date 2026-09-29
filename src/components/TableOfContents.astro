@@ -1,9 +1,18 @@
 ---
-// Sticky table of contents, built from the article's own h2 headings —
-// zero JS: Astro's content pipeline already assigns each heading a stable
-// slug id (confirmed in the build output), so this is just a list of plain
-// anchor links plus `position: sticky`. Only rendered by the caller when
-// there are at least two h2s (a "contents" list for one heading is noise).
+// Table of contents, built from the article's own h2 headings — zero JS:
+// Astro's content pipeline already assigns each heading a stable slug id
+// (confirmed in the build output), so this is just a list of plain anchor
+// links. Only rendered by the caller when there are at least two h2s (a
+// "contents" list for one heading is noise).
+//
+// No `position: sticky` here on purpose — it lives on the shared
+// `.article__sidebar` wrapper in Article.astro instead, one sticky
+// container around both this and SeriesRail. Two independently-sticky
+// siblings (this used to be sticky on its own) each stick to the same
+// viewport offset without moving each other down, so the second one's
+// normal-flow position ends up scrolling up underneath the first —
+// visually overlapping it. One sticky ancestor, with ordinary stacked
+// block children inside it, is the correct fix.
 export interface Props {
   headings: { depth: number; slug: string; text: string }[];
 }
@@ -26,11 +35,6 @@ const h2s = headings.filter((h) => h.depth === 2);
 </nav>
 
 <style>
-  .toc {
-    position: sticky;
-    top: var(--space-6);
-  }
-
   .toc__label {
     font-size: var(--step--1);
     font-weight: 700;

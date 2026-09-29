@@ -50,6 +50,7 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
 >
   <ReadingProgress />
 
+  <div class="article-band">
   <article class="container article" data-reading-progress-target>
     <header class="article__header">
       <p class={`category-pill pillar--${category}`}>{category}</p>
@@ -137,9 +138,23 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
       )
     }
   </article>
+  </div>
 </Base>
 
 <style>
+  /* The reading body's own band — docs/DESIGN-SYSTEM.md lists both
+     "Reading body" and "Keep reading" as surface-1 (white) section types,
+     so the whole article page (title block through Keep reading) sits on
+     one white band, distinct from the cream/sand bands Home and Explore
+     use. Previously there was no explicit background here at all, so the
+     page just showed through to body's site-wide cream default — the bug
+     this fixes. A full-width wrapper (not .article itself, which is
+     width-constrained by .container) so the color reaches the viewport
+     edges the same way Home/Explore's bands do. */
+  .article-band {
+    background: var(--surface-1);
+  }
+
   .article {
     padding-block: var(--space-8);
   }
@@ -206,9 +221,15 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
     grid-column: 1;
   }
 
+  /* One sticky container around both TableOfContents and SeriesRail (see
+     TableOfContents.astro's comment for why this lives here and not on
+     .toc itself): they stack as ordinary block children inside it, so they
+     move together and never overlap. */
   .article__sidebar {
     grid-column: 2;
     grid-row: 1;
+    position: sticky;
+    top: var(--space-6);
   }
 
   .article__capture {
@@ -292,7 +313,6 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
     }
 
     .article__sidebar :global(.toc) {
-      position: static;
       max-width: var(--measure);
       margin-inline: auto;
       margin-bottom: var(--space-8);

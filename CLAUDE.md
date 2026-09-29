@@ -1172,6 +1172,49 @@ ratios including the bug found above) but there is still no fresh
 screenshot of either page in either theme. Worth a real visual pass the
 next time the extension connects.
 
+**Post-session-4 fixes: sidebar overlap, reading-body background.** Two
+issues from owner review, both root-caused before touching code:
+- **Sidebar overlap:** `TableOfContents.astro`'s `.toc` had its own
+  `position: sticky`, and `SeriesRail.astro` sat right after it in the DOM
+  with no sticky positioning of its own. Two independently-sticky-or-not
+  siblings inside one tall container is the actual bug: a sticky element's
+  box still reserves its *natural* flow position for layout purposes (that
+  never changes, stuck or not) — so `SeriesRail`, occupying the flow space
+  immediately after the *short* TOC near the top of the tall sidebar, kept
+  scrolling normally with the page and passed behind/underneath the TOC
+  once the TOC was stuck partway down the viewport, visually overlapping
+  it. Fixed by moving `position: sticky; top: var(--space-6)` up one level,
+  onto the shared `.article__sidebar` wrapper in `Article.astro`, and
+  removing it from `.toc` entirely — TOC and SeriesRail are now ordinary
+  stacked block children of one sticky container, so they move together
+  and can't drift apart. Confirmed in the compiled CSS: exactly one
+  `position:sticky` remains in the article bundle now, on
+  `.article__sidebar`.
+- **Reading-body background:** the article page never set its own
+  background at all — every other page's bands are explicit
+  (`background: var(--surface-1|2|3)` on a full-width wrapper), but
+  `Article.astro` had no such wrapper, so it just showed through to
+  `body`'s site-wide cream default (`global.css`: `body { background:
+  var(--crema) }`). docs/DESIGN-SYSTEM.md's section-type table lists both
+  "Reading body" and "Keep reading" as `surface-1` (white), so the fix
+  wraps the whole article — title block through Keep reading, since both
+  are meant to be the same white band per that table — in one new
+  `.article-band` div with `background: var(--surface-1)`. Confirmed via
+  the compiled CSS that Home's and Explore's own bands
+  (`.hero-band`/`.start-here-band`/`.latest-band`/`.newsletter-band`,
+  `.explore-header`/`.topics-band`/`.tags-band`) are byte-for-byte
+  unchanged — this was additive to Article.astro only.
+- **Verified:** `npm run build` and `astro check` pass clean. No JS budget
+  change (still 2,713 bytes on an article page — neither fix touched any
+  script). Contrast re-checked for article body text against the new white
+  background in both themes (lowest result 6.18:1, still comfortably past
+  4.5:1). Mobile media query re-confirmed: `.article__sidebar` still
+  reverts to `position: static` under 56rem, unaffected by moving the
+  sticky rule up a level. Same honest caveat as every session this
+  redesign: no browser extension connection this round either, so this is
+  verified structurally (exact compiled CSS, computed contrast), not with
+  a fresh screenshot.
+
 **Next up (redesign rollout):** session 5 — Pagefind search (loads only
 when opened), the Reflection essay dark-by-default look, CSS view-transition
 motion respecting `prefers-reduced-motion`, then a Lighthouse + contrast
