@@ -21,6 +21,12 @@ export interface Props {
   // prompt both consume otherLangHref, just in different directions.
   lang?: 'en' | 'es';
   otherLangHref?: string;
+  // Session 5: only ReflectionArticle.astro passes this — forces the
+  // whole page (header/footer included, since there's no scoped-dark
+  // mechanism separate from the site-wide theme) into dark mode on first
+  // load unless the visitor already explicitly chose light. See
+  // BaseHead.astro for how the override actually works.
+  forceDark?: boolean;
 }
 
 const {
@@ -31,6 +37,7 @@ const {
   bare = false,
   lang = 'en',
   otherLangHref,
+  forceDark = false,
 } = Astro.props;
 
 // No Spanish homepage exists yet (chrome is English-only), so the default
@@ -43,7 +50,13 @@ const resolvedOtherLangHref = otherLangHref ?? (lang === 'es' ? '/' : '/es/artic
 
 <html lang={lang}>
   <head>
-    <BaseHead title={title} description={description} image={image} articleMeta={articleMeta} />
+    <BaseHead
+      title={title}
+      description={description}
+      image={image}
+      articleMeta={articleMeta}
+      forceDark={forceDark}
+    />
   </head>
   <body>
     {!bare && <Header />}

@@ -1,0 +1,317 @@
+---
+// v1.1 redesign, session 5: the Reflection essay layout. A separate
+// template from Article.astro, not a variant of it — used only for
+// articles in the "reflection" category (see the branch in
+// src/pages/articles/[...slug].astro and its Spanish counterpart). Every
+// other category keeps using the shared Article.astro, unchanged.
+//
+// What's different from a normal article, per the session's brief:
+// - Opens dark by default (forceDark, passed to Base — see
+//   BaseHead.astro), unless the visitor already explicitly chose light.
+//   There's no scoped "just this band is dark" mechanism in this
+//   codebase, and building one would fight the token architecture every
+//   other page relies on — so this forces the whole page (header/footer
+//   included) into the site's existing dark theme, exactly the way
+//   clicking the toggle already does everywhere else. Simplest correct
+//   answer given what's already here, not a shortcut.
+// - A narrower reading column and larger body text than a normal article
+//   (--reflection-measure below, and a bumped .prose font-size) — a
+//   deliberate essay feel, distinct from the wider, denser how-to
+//   template.
+// - A full-bleed hero photo space (breaks out of .container entirely),
+//   a large pull-quote treatment on blockquotes, and one in-essay photo
+//   space (inserted by remark-inline-reflection-photo.mjs after the
+//   essay's first h2 — absent, not broken, on an essay with 0 or 1 h2s).
+// - No table of contents or series rail: a personal essay isn't the kind
+//   of content a reader jumps around in section by section, and dropping
+//   the sidebar is what actually makes the narrower column read as
+//   intentional rather than just "the same page with less width." Judgment
+//   call, not asked for explicitly — worth a second look if a reflection
+//   essay ever ends up in a series.
+// - "More reflections" instead of "Keep reading": only other reflection
+//   essays, no same-category-then-fallback logic — if none exist yet, the
+//   section is simply absent, the same hidden-not-empty pattern already
+//   used for Series/translations/etc. in this codebase.
+// - Carries the same data-pagefind-body/-ignore split as Article.astro
+//   (SearchBox.astro's index), so a published reflection essay is
+//   searchable the same way any other article is.
+// - The mid-article and end-of-article newsletter captures are kept,
+//   unchanged — nothing in this session's brief said to drop them, and
+//   removing a monetization touchpoint wasn't asked for.
+import type { CollectionEntry } from 'astro:content';
+import Base from './Base.astro';
+import Prose from '../components/Prose.astro';
+import EmailCapture from '../components/EmailCapture.astro';
+import AuthorBox from '../components/AuthorBox.astro';
+import { Image } from 'astro:assets';
+import { getArticleHref, getTranslationHref } from '../lib/articles';
+
+export interface Props {
+  article: CollectionEntry<'articles'>;
+  readingTimeMinutes: number;
+  relatedEssays: CollectionEntry<'articles'>[];
+  author: { name: string; bio: string };
+}
+
+const { article, readingTimeMinutes, relatedEssays, author } = Astro.props;
+const { title, description, category, publishDate, updatedDate, heroImage, heroAlt, lang } = article.data;
+
+const formattedDate = publishDate.toLocaleDateString(lang === 'es' ? 'es' : 'en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+const translationHref = await getTranslationHref(article);
+---
+
+<Base
+  title={title}
+  description={description}
+  articleMeta={{ publishDate, updatedDate }}
+  lang={lang}
+  otherLangHref={translationHref}
+  forceDark
+>
+  <article class="reflection-band" data-pagefind-body>
+    <header class="container reflection-essay__header rise-in">
+      <p class={`category-pill pillar--${category}`}>{category}</p>
+      <h1>{title}</h1>
+      <p class="reflection-essay__standfirst">{description}</p>
+      <p class="reflection-essay__meta">
+        <span>{author.name}</span>
+        <span aria-hidden="true">·</span>
+        <time datetime={publishDate.toISOString()}>{formattedDate}</time>
+        <span aria-hidden="true">·</span>
+        <span>{readingTimeMinutes} min read</span>
+        {
+          translationHref && (
+            <>
+              <span aria-hidden="true">·</span>
+              <a href={translationHref}>{lang === 'es' ? 'Read in English' : 'Leer en español'}</a>
+            </>
+          )
+        }
+      </p>
+    </header>
+
+    {/* Full-bleed: deliberately outside .container, edge to edge. A flat
+       tile-black fill when there's no real heroImage yet, same
+       no-fabricated-imagery rule as every other placeholder in this
+       codebase. */}
+    {
+      heroImage ? (
+        <Image
+          src={heroImage}
+          alt={heroAlt ?? ''}
+          class="reflection-essay__hero photo-settle"
+          widths={[768, 1200, 1920]}
+          sizes="100vw"
+          format="avif"
+        />
+      ) : (
+        <div class="reflection-essay__hero reflection-essay__hero--placeholder photo-settle" aria-hidden="true" />
+      )
+    }
+
+    <div class="container reflection-essay__container">
+      <div class="reflection-essay__prose-wrap">
+        <Prose>
+          <slot />
+        </Prose>
+
+        <div class="reflection-essay__capture" data-pagefind-ignore>
+          <EmailCapture />
+        </div>
+
+        <div class="reflection-essay__author" data-pagefind-ignore>
+          <AuthorBox name={author.name} bio={author.bio} />
+        </div>
+      </div>
+
+      {
+        relatedEssays.length > 0 && (
+          <section class="reflection-essay__more" data-pagefind-ignore>
+            <p class="section-label">More reflections</p>
+            <h2>Other essays</h2>
+            <div class="more-reflections__grid">
+              {relatedEssays.map((essay) => (
+                <a href={getArticleHref(essay)} class="more-reflections__tile">
+                  <h3 class="more-reflections__title">{essay.data.title}</h3>
+                  <p class="more-reflections__description">{essay.data.description}</p>
+                  <span class="more-reflections__arrow" aria-hidden="true">
+                    →
+                  </span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )
+      }
+    </div>
+  </article>
+</Base>
+
+<style>
+  /* Same "explicit band background" fix session 4 applied to Article.astro
+     — reads var(--surface-1), which the dark theme (forced above) already
+     redefines to a near-black value, so this band goes dark automatically
+     with no reflection-specific color logic needed here. */
+  .reflection-band {
+    background: var(--surface-1);
+    padding-block: var(--space-8);
+  }
+
+  /* The narrower, larger-type essay column. Deliberately its own literal
+     value rather than reusing --measure (68ch, the normal article width) —
+     there's no existing "narrow" token, and one felt premature to invent
+     for a single page type. Revisit if a second page ever wants the same
+     narrower column. */
+  .reflection-essay__header,
+  .reflection-essay__container {
+    --reflection-measure: 52ch;
+    max-width: var(--reflection-measure);
+    margin-inline: auto;
+  }
+
+  .reflection-essay__header {
+    margin-bottom: var(--space-6);
+  }
+
+  .reflection-essay__standfirst {
+    font-size: var(--step-1);
+    color: var(--espresso);
+    margin-top: var(--space-4);
+  }
+
+  .reflection-essay__meta {
+    color: var(--muted);
+    font-size: var(--step--1);
+    margin-top: var(--space-4);
+  }
+
+  .reflection-essay__hero {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    margin-block: var(--space-8);
+  }
+
+  .reflection-essay__hero--placeholder {
+    background: var(--tile-black);
+  }
+
+  /* Larger body text than a normal article (step-0, the site's base body
+     size) — an essay feel, not a how-to-guide feel. */
+  .reflection-essay__prose-wrap :global(.prose) {
+    font-size: var(--step-1);
+    line-height: 1.7;
+  }
+
+  /* The large pull-quote treatment: centered, bigger, an olive rule above
+     and below rather than Prose's default left border-in-copper — olive is
+     explicitly listed in docs/DESIGN-SYSTEM.md as the color for "the
+     pull-quote rule" section marker, so this isn't a one-off color choice. */
+  /* .prose is included in the selector (not just the wrapper class) so
+     this has higher specificity than Prose.astro's own
+     `.prose :global(blockquote)` rule regardless of which one the
+     compiler happens to hoist into <head> first — two equally-specific
+     rules would otherwise depend on source order, which is exactly the
+     kind of fragile thing not to rely on. */
+  .reflection-essay__prose-wrap :global(.prose blockquote) {
+    border-left: none;
+    border-top: 1px solid var(--olive-text);
+    border-bottom: 1px solid var(--olive-text);
+    padding: var(--space-6) 0;
+    margin-inline: auto;
+    max-width: 46ch;
+    text-align: center;
+    font-style: italic;
+    font-size: var(--step-2);
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  .reflection-essay__capture {
+    margin-top: var(--space-9);
+  }
+
+  .reflection-essay__author {
+    margin-top: var(--space-8);
+  }
+
+  .reflection-essay__more {
+    max-width: 64rem;
+    margin-inline: auto;
+    margin-top: var(--space-10);
+  }
+
+  .more-reflections__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5);
+    margin-top: var(--space-6);
+  }
+
+  .more-reflections__tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-6);
+    background: var(--surface-2);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: var(--ink);
+    transition:
+      transform 280ms ease,
+      box-shadow 280ms ease,
+      background-color 350ms ease,
+      color 350ms ease;
+  }
+
+  .more-reflections__tile:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .more-reflections__tile:hover .more-reflections__arrow {
+    transform: translate(4px, -4px);
+  }
+
+  .more-reflections__description {
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  .more-reflections__arrow {
+    align-self: flex-end;
+    margin-top: auto;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+    transition: transform 200ms ease;
+  }
+
+  @media (max-width: 56rem) {
+    .reflection-essay__hero {
+      aspect-ratio: 4 / 3;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .more-reflections__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .more-reflections__tile,
+    .more-reflections__arrow {
+      transition: none;
+    }
+  }
+</style>

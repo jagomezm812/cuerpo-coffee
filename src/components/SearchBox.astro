@@ -1,10 +1,10 @@
 ---
 // v1.1 session 5: search, via Pagefind (built at deploy time over the
-// article content — see package.json's "postbuild" script and
-// Article.astro/ReflectionArticle.astro's data-pagefind-body/-ignore
-// attributes for what actually gets indexed). No client filtering of
-// categories or tags here — those stay the static links already built in
-// session 4; this is free-text search only.
+// article content — see package.json's "postbuild" script and Article.
+// astro/ReflectionArticle.astro's data-pagefind-body/-ignore attributes
+// for what actually gets indexed). No client filtering of categories or
+// tags here — those stay the static links already built in session 4;
+// this is free-text search only.
 //
 // Pagefind's own JS (~a few hundred KB, scales with index size) is
 // genuinely heavy, so it's never loaded on page load — only on the first

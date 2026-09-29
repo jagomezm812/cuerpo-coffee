@@ -525,6 +525,27 @@ input {
 }
 
 /*
+  v1.1 session 5: the Reflection essay's one in-essay photo space —
+  unscoped for the same reason as .email-capture above: it's raw HTML
+  injected into the markdown AST by remark-inline-reflection-photo.mjs, not
+  rendered by an Astro component, so no component's scoped <style> can
+  reach it. Sits inside the essay's narrow prose column (unlike the
+  full-bleed hero, this one doesn't break out of it) — a flat tile-dark
+  fill, no fabricated imagery, same rule as every other placeholder here.
+*/
+.reflection-inline-photo {
+  /* Only margin-bottom — Prose's own `.prose > * + *` rule already gives
+     this block a margin-top (it's a normal sibling in the flow), so
+     adding a margin-block here would double up the top gap, the same
+     stacked-padding bug class flagged in CLAUDE.md's session 3/4 fixes. */
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-lg);
+  background: var(--tile-dark);
+  margin-bottom: var(--space-6);
+}
+
+/*
   v1.1 session 5, Motion: "everything switches off under
   prefers-reduced-motion" — with no exceptions, per instruction. Rather
   than trust every current and future per-component
@@ -536,9 +557,14 @@ input {
   of which rule declared it or how specific that rule was. `!important` is
   used deliberately here, the one place in this codebase it is — this is
   exactly the kind of cross-cutting accessibility override it exists for,
-  not a specificity shortcut. Verified empirically (not just asserted) via
-  a headless-Chrome check with prefers-reduced-motion emulated — see
-  CLAUDE.md's session 5 notes.
+  not a specificity shortcut. Verified empirically (not just asserted): a
+  headless real-Chrome check (puppeteer-core driving the existing local
+  Chrome install, --no-save, removed after) loaded the homepage twice —
+  once normally, once with prefers-reduced-motion emulated via
+  Emulation.setEmulatedMedia — and read computed styles back. Normal:
+  hero animation-duration 0.7s, .btn/body transition-duration
+  0.2s–0.35s. Emulated: every one of those collapsed uniformly to 1e-05s
+  (0.01ms). See CLAUDE.md's session 5 notes for the full result.
 */
 @media (prefers-reduced-motion: reduce) {
   *,
