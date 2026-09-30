@@ -1924,6 +1924,77 @@ standfirst, and the sign-off re-verified verbatim against the built HTML
 output after this layout change, not assumed unchanged just because the
 JSX text nodes weren't touched.
 
+## v1.1 redesign, second About layout pass: five fixes from owner review
+
+**Status: built on branch `redesign`, not merged, not live.** Still
+layout-only — the copy is untouched, re-verified verbatim against the
+build output after this pass too, same discipline as the previous one.
+
+**The dead-gap bug (the real one, not a spacing tweak):** the previous
+layout put title+standfirst and the photo in one CSS Grid row, then the
+body copy as a separate block after that row entirely. Grid rows
+auto-size to their tallest item by default — since the photo (~460px)
+was far taller than the title+standfirst, the row's height was dictated
+by the photo, and the body copy (a sibling block after the whole row)
+couldn't start until that full height was spent, leaving the reported
+dead gap under the standfirst.
+**Fixed with a real CSS Grid row-span, not a hack:** the grid is now two
+rows — row one holds title+standfirst, row two holds the body copy — and
+the photo spans both rows (`grid-row: 1 / 3`) instead of sharing just the
+first one. Each row's own height now comes only from its own
+non-spanning content (title-block alone for row one, all the body copy
+for row two); the spanning photo simply borrows whatever height those
+two rows already add up to. Since real body copy is always far taller
+than 460px, this never needs the rows to grow to fit the photo — which
+is exactly what makes the copy start flowing immediately under the
+standfirst instead of waiting for the photo. A real, well-established
+Grid pattern for "sidebar image beside multiple content blocks," not
+something invented for this page.
+
+**Standfirst:** italic, `--step-0` (matching body text) instead of
+`--step-1` upright — a quiet aside, not a lead paragraph.
+
+**Left-aligned throughout:** the pull-quote and sign-off cards lost their
+`text-align: center`/`margin-inline: auto` centering (card background/
+padding/radius kept, just the text alignment changed) — nothing on the
+page centers now, matching the rest of the site's own left-aligned body
+text.
+
+**Sign-off row:** now a real `flex` row — a 3.5rem circular avatar (the
+same `author.data.avatar` the author box elsewhere already uses) beside
+the name/title as one line with an em dash, inside the same card as
+before. Deliberately still not `<AuthorBox />` itself — that component's
+"Written by" framing doesn't fit the author's own closing signature on
+their own bio page, and its stacked name/title layout doesn't match the
+single combined line the original sign-off copy actually uses. `name`
+and `title` are separate `<span>`s inside one line (bold ink / muted)
+for the same visual hierarchy `AuthorBox` uses, without reusing the
+component wholesale.
+
+**Hero crop, measured rather than guessed twice:** the reported "cuts off
+one shoulder" bug was real — confirmed by cropping the *previous* built
+screenshot to just the photo and comparing it directly against the source
+file: the subject sits left of center in the raw 1170×1278 photo (more
+empty window/sky on the right than plant/pillar on the left), so a plain
+`object-position: center` crop at the narrower 4:5 ratio cut in
+asymmetrically. Set to `object-position: 38% center` and confirmed by
+screenshotting the fix and comparing the cropped result side by side
+against the original bug's own cropped screenshot — both shoulders
+visible, roughly symmetric — not just picked once and assumed correct.
+
+**Verified in a real browser, all three surfaces asked for:**
+`puppeteer-core` (installed `--no-save`, removed immediately after,
+confirmed via `git status` showing no diff on `package.json`/
+`package-lock.json` afterward) screenshotted the page in light, dark, and
+a 390px mobile viewport — all three confirmed clean, plus the direct
+before/after crop comparison described above.
+
+**Verified overall:** `npm run build` (30 routes) and `astro check`
+(0 errors/warnings/hints) both pass clean. Every body paragraph, the
+standfirst, and the sign-off re-verified verbatim against the built HTML
+output, not assumed unchanged just because the JSX text nodes weren't
+directly edited.
+
 **Next up (redesign rollout):** session 6 — go live: merge `redesign` into
 `main` after merging latest `main` into it first, tag `v1.1-redesign`,
 final CHANGELOG entry. `docs/UPDATE-WORKFLOW.md` section 7, step 6. The
