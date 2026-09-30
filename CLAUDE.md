@@ -1835,11 +1835,100 @@ at full quality.
 title text is inside the indexed article body) and `astro check`
 (0 errors/warnings/hints) both pass clean.
 
+## v1.1 redesign, post-photos: About page layout redesign
+
+**Status: built on branch `redesign`, not merged, not live.** Layout-only,
+per instruction — the real copy from the previous session is untouched;
+verified by diff and by re-grepping the build output, not just assumed
+from not having typed over it.
+
+**Corner portrait, replacing the full-width treatment:** `about-hero.jpg`
+is a face-and-shoulders portrait crop, the wrong shape for the landscape
+hero treatment `Article.astro` uses — stretched full-width it read as an
+oversized, oddly-cropped banner. Now a small (≈368×460 at desktop,
+≈208×260 on mobile) photo beside the title/standfirst in a two-column
+intro row, 4:5, `object-fit: cover`, `radius-lg`.
+**A real bug, not just a style choice, caught before it shipped:** the
+first version set `aspect-ratio: 4/5` directly on the `<Image>`, and it
+didn't work — the rendered box came out at the source file's full native
+1170×1278 regardless. Confirmed directly, not guessed: Astro's `<Image>`
+sets the `<img>`'s HTML `width`/`height` attributes to the source file's
+own dimensions whenever no explicit `width`/`height` prop is given (only
+`widths` was provided, for the responsive srcset), and a browser resolves
+that element's rendered box from those HTML attributes *ahead of* a CSS
+`aspect-ratio` declared on that same element — confirmed via
+`getBoundingClientRect()` before and after, not assumed from reading
+about the behavior. **Fixed by moving the ratio/crop onto a plain
+wrapping `<div>`** (`.about__photo-frame`) instead of the `<img>` itself:
+a div has no competing intrinsic size of its own, so `aspect-ratio` +
+`overflow: hidden` apply the same way regardless of that HTML-attribute
+interaction; the `<img>` inside just fills it at `width:100%;
+height:100%; object-fit:cover`. Worth remembering for any future
+Astro `<Image>` usage that needs a forced crop ratio without also
+specifying an explicit pixel `width`/`height`: put the ratio on a
+wrapper, not the image element.
+**Mobile:** stacked (photo above text), a fixed 13rem (not full-width),
+centered — the same "modest size, not full-bleed" instruction applied to
+both breakpoints, not just desktop.
+
+**Pull-quote card**, inserted after the third paragraph per instruction —
+docs/DESIGN-SYSTEM.md's pull-quote treatment (olive rule, italic, larger
+Manrope — the same language `ReflectionArticle.astro`'s blockquote
+already uses) adapted into a self-contained elevated card rather than an
+in-column rule-bordered block. The olive rule became a short, centered
+accent above the text rather than the full-width top/bottom rules
+Reflection's version uses — a rule spanning the whole card's edge would
+have read as a border, not the quote-marker accent it's supposed to be.
+**No shadow — checked the design system's actual rule rather than
+defaulting to "shadows usually mean elevated":**
+docs/DESIGN-SYSTEM.md's Shape/space/depth section is explicit with no
+stated exception — "shadow only on hover-lift and the search dropdown,
+never at rest." This card is static (not a link/button), so there's no
+hover state to legitimately hang a shadow on either, and inventing one
+just to justify a shadow would be exactly the kind of one-off exception
+that erodes a restraint rule the first time it's inconvenient. Elevation
+comes the same way every other at-rest card on this site already achieves
+it without a shadow (the author box, a pillar tile, the newsletter
+card): a `--surface-2` fill, generous padding, and `radius-lg`, distinct
+from the white `surface-1` reading band around it.
+**A real stacked-margin bug, caught before the first build, not after:**
+the pull-quote sits as a direct child of `<Prose>`, which already gives
+every non-first child a `margin-top` via its own `.prose > * + *` rule —
+the first draft also set `margin-block` (top and bottom) on the card
+itself, which would have doubled the top gap, the same bug class flagged
+repeatedly elsewhere in this file. Fixed to `margin-bottom` only before
+ever building it, not found by testing after.
+
+**Sign-off card**, deliberately not a reuse of `<AuthorBox />` as-is: that
+component's whole job is introducing the author on somebody else's
+reading (an article they didn't write) with a small circular avatar —
+here the author *is* the page, and the portrait already ran once at the
+top of it, so a second small photo at the bottom would read as a
+duplicate, not a closing moment. Built as its own text-only card (name,
+then title, centered) sharing the same `--surface-2`/`radius-lg`
+language as the pull-quote above it, so the two read as the page's two
+deliberate pauses without being the same component.
+
+**Verified in a real browser, all three surfaces asked for:**
+`puppeteer-core` (installed `--no-save`, removed immediately after,
+confirmed via `git status` showing no diff on `package.json`/
+`package-lock.json` afterward) screenshotted the page in light, dark
+(`prefers-color-scheme` emulation), and a 390px mobile viewport — all
+three confirmed clean, including a direct `getBoundingClientRect()` check
+on the photo frame confirming the true 4:5 ratio, not just a screenshot
+that happened to look about right.
+
+**Verified overall:** `npm run build` (30 routes) and `astro check`
+(0 errors/warnings/hints) both pass clean. Every body paragraph, the
+standfirst, and the sign-off re-verified verbatim against the built HTML
+output after this layout change, not assumed unchanged just because the
+JSX text nodes weren't touched.
+
 **Next up (redesign rollout):** session 6 — go live: merge `redesign` into
 `main` after merging latest `main` into it first, tag `v1.1-redesign`,
 final CHANGELOG entry. `docs/UPDATE-WORKFLOW.md` section 7, step 6. The
-branch is now fully audited, has real author/About content, and is clean
-going into that step.
+branch is now fully audited, has real author/About content and layout,
+and is clean going into that step.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;

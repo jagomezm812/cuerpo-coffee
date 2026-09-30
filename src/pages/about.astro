@@ -1,17 +1,22 @@
 ---
-// v1.1 redesign: the real About page, replacing the placeholder body copy
-// and photo-less layout that shipped with the site's skeleton. A reading
-// page, not a section-banded one — one white band (surface-1, the same
-// "reading body" treatment Article.astro's body uses), a title block, one
-// photo space, and the body copy, all sharing one column (var(--measure))
-// so nothing on the page floats at a random width relative to the text
-// above or below it. rise-in/photo-settle on the title block and hero
-// photo match every other page's opening block, not a new pattern.
+// v1.1 redesign: the About page. Built with real content in a prior
+// session (src/pages/about.astro's history); this pass is layout-only,
+// per instruction — the copy below is byte-for-byte what shipped before,
+// not touched.
 //
-// The sign-off pulls the name/title from the site's one shared author
-// config (src/lib/author.ts) rather than hardcoding the string a second
-// time — today that resolves to exactly the given copy, and stays correct
-// automatically if the author config is ever updated at /keystatic.
+// Layout changes this pass:
+// - The hero photo moved from a full-width article-hero treatment into a
+//   small corner portrait (320-400px) beside the title/standfirst, since
+//   about-hero.jpg is a face-and-shoulders portrait crop, not a landscape
+//   photo space — stretching it full-width was the wrong shape for what
+//   the photo actually is.
+// - A pull-quote card partway through the body, adapting the Reflection
+//   essay's pull-quote treatment (olive rule, italic, larger Manrope)
+//   into a self-contained elevated card rather than an in-column
+//   rule-bordered block.
+// - The sign-off is now its own card rather than a plain hairline-divided
+//   paragraph — see that style block below for why it deliberately
+//   doesn't just reuse <AuthorBox /> as-is.
 import Base from '../layouts/Base.astro';
 import Prose from '../components/Prose.astro';
 import { Image } from 'astro:assets';
@@ -26,22 +31,25 @@ const author = await getAuthor();
   description="Why Cuerpo Coffee exists and who writes it: two decades of paying attention to coffee, starting from a tree on a family plot of land."
 >
   <div class="about-band">
-    <header class="container about__header rise-in">
-      <h1>About</h1>
-      <p class="about__standfirst">
-        Fifteen years old, holding a red coffee cherry I didn't know the name for, on my
-        father's land. That's where this started.
-      </p>
+    <header class="container about__intro rise-in">
+      <div class="about__intro-text">
+        <h1>About</h1>
+        <p class="about__standfirst">
+          Fifteen years old, holding a red coffee cherry I didn't know the name for, on my
+          father's land. That's where this started.
+        </p>
+      </div>
+      <div class="about__photo-frame photo-settle">
+        <Image
+          src={aboutHero}
+          alt="Jorge Gomez, founder of Cuerpo Coffee"
+          class="about__photo"
+          widths={[320, 480, 640]}
+          sizes="(min-width: 40rem) 360px, 260px"
+          format="avif"
+        />
+      </div>
     </header>
-
-    <Image
-      src={aboutHero}
-      alt="Jorge Gomez, founder of Cuerpo Coffee"
-      class="about__hero photo-settle"
-      widths={[480, 768, 1170]}
-      sizes="(min-width: 40rem) 40rem, 100vw"
-      format="avif"
-    />
 
     <div class="container about__body">
       <Prose>
@@ -63,6 +71,13 @@ const author = await getAuthor();
           beans. I processed my own batch. Then I bought a small roaster and roasted my first
           kilo. I was fifteen.
         </p>
+
+        <div class="about__pullquote">
+          <p class="about__pullquote-text">
+            A ritual of drinking coffee, a meditation and a time with yourself.
+          </p>
+        </div>
+
         <p>
           That's not a story about becoming a professional. I didn't go work for a roaster,
           and I don't have a certification to point to. What I have is closer to twenty years
@@ -82,8 +97,12 @@ const author = await getAuthor();
           fifteen. If you're standing where I was — curious, slightly obsessed, not sure
           where to start — that's exactly who this is for.
         </p>
-        <p class="about__signoff">{author.data.name} — {author.data.title}</p>
       </Prose>
+
+      <div class="about__signoff">
+        <p class="about__signoff-name">{author.data.name}</p>
+        <p class="about__signoff-title">{author.data.title}</p>
+      </div>
     </div>
   </div>
 </Base>
@@ -96,10 +115,21 @@ const author = await getAuthor();
     padding-block: var(--space-8);
   }
 
-  .about__header {
+  /* Wider than the reading column on purpose — a two-column row needs
+     more room than the text alone, so this uses .container's own width
+     rather than var(--measure). The text side is still capped to
+     var(--measure) below, so the title/standfirst don't stretch to fill
+     the extra space just because the row is wider. */
+  .about__intro {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: var(--space-7);
+    align-items: start;
+    margin-bottom: var(--space-8);
+  }
+
+  .about__intro-text {
     max-width: var(--measure);
-    margin-inline: auto;
-    margin-bottom: var(--space-6);
   }
 
   .about__standfirst {
@@ -108,21 +138,29 @@ const author = await getAuthor();
     margin-top: var(--space-4);
   }
 
-  /* Deliberately capped to the same column width as the title/body above
-     and below it, not stretched to the wider article-hero treatment —
-     about-hero.jpg is a portrait-oriented photo (taller than wide), and
-     forcing it to a landscape-hero width would either distort it or crop
-     away the headroom/shoulders it was chosen for. Keeping it at the
-     page's one reading column also means nothing on this page floats at
-     an arbitrary width relative to the text around it. */
-  .about__hero {
+  /* The corner portrait: a fixed small photo, not a full-width hero space
+     — about-hero.jpg is a face-and-shoulders crop, the wrong shape for
+     the landscape treatment Article.astro's own hero uses. The 4:5 ratio
+     and radius live on this wrapping frame, not the <img> itself — Astro's
+     <Image> sets the img's HTML width/height attributes to the source
+     file's own natural size (1170x1278) since no explicit width/height
+     was requested, and confirmed directly (computed styles before/after)
+     that a browser resolves the img's rendered box from those attributes
+     ahead of a CSS `aspect-ratio` declared on that same element. A plain
+     wrapping div has no competing intrinsic size of its own, so the ratio
+     and clip apply the same way regardless of that interaction. */
+  .about__photo-frame {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .about__photo {
     display: block;
     width: 100%;
-    max-width: var(--measure);
-    height: auto;
-    margin-inline: auto;
-    margin-bottom: var(--space-8);
-    border-radius: var(--radius-lg);
+    height: 100%;
+    object-fit: cover;
   }
 
   .about__body {
@@ -130,14 +168,106 @@ const author = await getAuthor();
     margin-inline: auto;
   }
 
-  /* padding-top + border-top, not margin-top: Prose's own `.prose > * + *`
-     rule already gives this paragraph a margin-top like any other body
-     paragraph — adding a second margin-top here would stack with it, the
-     same class of bug flagged repeatedly elsewhere in this codebase
-     (CLAUDE.md's session 3/4 fixes, the Reflection in-essay photo). */
+  /* The pull-quote card: docs/DESIGN-SYSTEM.md's pull-quote treatment
+     (olive rule, italic, larger Manrope — see ReflectionArticle.astro's
+     own blockquote styling) adapted into a self-contained elevated card
+     rather than an in-column rule-bordered block, per this session's
+     brief. A short centered olive rule stands in for the full-width
+     top/bottom rules that treatment normally uses — a rule spanning the
+     whole card edge-to-edge would read as a border, not the quote-marker
+     accent the olive rule is supposed to be.
+     No shadow, deliberately — docs/DESIGN-SYSTEM.md's Shape/space/depth
+     section is explicit and has no stated exception: "shadow only on
+     hover-lift and the search dropdown, never at rest." This card is
+     static, not a link or button, so there's no hover state to hang a
+     shadow on either — adding one anyway (or inventing a hover just to
+     justify one) would be the kind of one-off exception that erodes a
+     restraint rule the moment it's convenient. The card still reads as a
+     deliberate pause without one: a different surface color, generous
+     padding, and rounded corners already separate it from the paragraphs
+     around it, the same way every other at-rest card on this site (the
+     author box, a pillar tile, the newsletter card) achieves elevation
+     without a shadow. */
+  .about__pullquote {
+    /* margin-bottom only — this div is a direct child of <Prose>, so
+       Prose's own `.prose > * + *` rule already gives it a margin-top;
+       adding one here too would stack the two, the exact bug class
+       flagged repeatedly elsewhere in this codebase. */
+    background: var(--surface-2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-7) var(--space-6);
+    margin-bottom: var(--space-8);
+    text-align: center;
+  }
+
+  .about__pullquote::before {
+    content: '';
+    display: block;
+    width: 3rem;
+    height: 2px;
+    background: var(--olive-text);
+    margin-inline: auto;
+    margin-bottom: var(--space-4);
+  }
+
+  .about__pullquote-text {
+    font-style: italic;
+    font-size: var(--step-2);
+    line-height: 1.4;
+    color: var(--ink);
+    max-width: 32ch;
+    margin-inline: auto;
+  }
+
+  /* The closing sign-off, its own card — not a reuse of <AuthorBox />.
+     AuthorBox's whole job is to introduce the author on someone else's
+     reading (an article they didn't write); here the author IS the page,
+     and the portrait photo already ran at the top of it, so a second
+     small circular avatar here would just be a duplicate, not a closing
+     moment. Deliberately text-only: name, then title, centered, in the
+     same surface-2/radius-lg card language as the pull-quote above it so
+     the two read as siblings — the page's two "pause" moments — without
+     being the same component. Same "padding instead of a second
+     margin-top" reasoning as the plain-paragraph version this replaced:
+     Prose's `.prose > * + *` rule only reaches its own direct children,
+     and this card sits in .about__body as Prose's sibling (not inside
+     Prose), so it never had that stacked-margin risk to begin with —
+     its own margin-top here is the only one in play. */
   .about__signoff {
-    padding-top: var(--space-6);
-    border-top: 1px solid var(--hairline);
+    background: var(--surface-2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin-top: var(--space-8);
+    text-align: center;
+  }
+
+  .about__signoff-name {
     font-weight: 700;
+    font-size: var(--step-1);
+  }
+
+  .about__signoff-title {
+    color: var(--muted);
+    font-size: var(--step--1);
+    margin-top: var(--space-2);
+  }
+
+  @media (max-width: 40rem) {
+    /* Stacked, not full-width: the photo keeps its own modest size and
+       centers above the text, rather than growing to fill the mobile
+       viewport the way a real hero photo space would. */
+    .about__intro {
+      grid-template-columns: 1fr;
+    }
+
+    .about__intro-text {
+      order: 2;
+    }
+
+    .about__photo-frame {
+      order: 1;
+      width: 13rem;
+      margin-inline: auto;
+    }
   }
 </style>
