@@ -137,11 +137,16 @@ export default config({
       format: 'yaml',
       schema: {
         name: fields.text({ label: 'Name', validation: { isRequired: true } }),
-        bio: fields.text({
-          label: 'Short bio',
-          description: 'One or two sentences — who you are and why you can teach this.',
-          multiline: true,
+        title: fields.text({
+          label: 'Title',
+          description: 'A short role line, e.g. "Founder, Cuerpo Coffee".',
           validation: { isRequired: true },
+        }),
+        avatar: fields.image({
+          label: 'Avatar',
+          description: 'A tight square headshot — used in the author box at the end of every article.',
+          directory: 'src/assets/author',
+          validation: { isRequired: false },
         }),
       },
     }),

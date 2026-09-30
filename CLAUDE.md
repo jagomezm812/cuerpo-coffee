@@ -1742,10 +1742,104 @@ site, and this one made none.
 | Explore (search fix in place) | 99 / 100 / 100 | 99 / 100 / 100 | 0 | none |
 | Reflection (temp fixture, deleted after) | 100 / 100 / 100 | 99 / 100 / 100 | 0 | none |
 
+## v1.1 redesign, pre-session-6: real author info, photos, and a real About page
+
+**Status: built on branch `redesign`, not merged, not live.** The last
+real content gap before going live — placeholder author text and the
+About page's filler copy — filled in with the owner's actual photos and
+words.
+
+**Two real photos landed in `src/assets/author/`.** Their on-disk names
+didn't match what was asked for (`avatar_square.jpg`/`about_portrait.jpg`
+vs. the requested `avatar.jpg`/`about-hero.jpg`) — renamed rather than
+referenced under their original names, so the code matches what was
+actually asked for rather than working around a naming mismatch. Confirmed
+by dimensions before renaming, not just by guessing from filenames:
+`avatar.jpg` is a genuine 512×512 square; `about-hero.jpg` is 1170×1278,
+a portrait crop with real headroom, matching "a wider portrait with
+shoulders" as described.
+
+**Author config (`src/content.config.ts`, `keystatic.config.ts`,
+`src/content/author/author.yaml`) gained real fields, not just real
+values:** the schema never had a `title` or `avatar` field at all — only
+`name` and a placeholder `bio` from session 4. `bio` was renamed to
+`title` (a short role line) rather than kept alongside a new bio sentence:
+no bio copy was ever provided for it, and inventing one would have broken
+this same schema's own "don't fabricate real content" precedent — the one
+that justified shipping it with placeholder text in the first place.
+`avatar` is a real `image()` field (same pattern as an article's
+`heroImage`), wired through Keystatic as `fields.image` pointed at
+`src/assets/author`, so the owner can replace either photo at `/keystatic`
+without a code change.
+
+**`AuthorBox.astro` now renders a real photo, not a flat placeholder** —
+an `<Image>` from `astro:assets` when an avatar is set, still falling back
+to the old flat circle (now a named `--placeholder` modifier class, not
+the default) if one's ever absent, same defensive pattern as every other
+optional image in this codebase. `bio` prop renamed to `title` to match
+the schema. `Article.astro` and `ReflectionArticle.astro` (the two
+callers) both updated — their hand-written `author` prop type and their
+`<AuthorBox>` call both needed the same rename, confirmed via `astro
+check` that nothing was missed rather than assumed from a single grep.
+
+**`/about` rebuilt from a two-paragraph placeholder (with a literal
+"TODO (owner): replace before launch" comment) into the real page.**
+Reading-page layout, not a section-banded one — one white `surface-1`
+band, one reading column (`var(--measure)`) running from the title through
+the photo to the body and the sign-off, `rise-in`/`photo-settle` on the
+title block and hero matching every other page's opening block (an
+already-established pattern, not something invented for this page).
+**One real judgment call, disclosed rather than made silently:** the hero
+photo is deliberately capped to the same reading-column width as the text
+around it, not stretched to the wider landscape treatment Article.astro's
+own hero uses — `about-hero.jpg` is portrait-oriented (taller than wide),
+and forcing a portrait photo into a landscape-hero mold would have either
+distorted it or cropped away the exact headroom/shoulders it was chosen
+for. The sign-off line pulls `name`/`title` from the one shared author
+config via `getAuthor()` rather than hardcoding the string a second
+time — today that resolves to character-for-character the same text
+that was given, and stays correct automatically if the author config
+is ever updated later, consistent with this codebase's "one source of
+truth, never invent per-page content" rule already applied to every
+article's byline.
+**A real stacked-margin near-miss, caught before it shipped, not after:**
+the sign-off paragraph's first draft set its own `margin-top: 0` trying to
+override Prose's default `.prose > * + *` spacing rule — which wouldn't
+even have worked (Prose's scoped selector has higher specificity than a
+bare class, so the override would have silently done nothing), and more
+importantly wasn't actually what was wanted: the gap *before* the
+sign-off's hairline rule is supposed to come from Prose's own normal
+paragraph spacing, with only a `padding-top` + `border-top` added on top
+of that for the divider itself. Fixed before the first build.
+**Copy verified verbatim, not just visually:** every paragraph and the
+standfirst were grepped directly out of the built HTML output character
+for character against the text given, not just eyeballed in a screenshot
+— six body paragraphs, correctly separated (confirmed via the compiled
+HTML's actual `<p>` boundaries, not assumed from the source markup), the
+sign-off line, and the hero's alt text all matched exactly.
+
+**Verified in a real browser, all three surfaces asked for:** `puppeteer-
+core` (installed `--no-save`, removed immediately after, confirmed via
+`git status` showing no diff on `package.json`/`package-lock.json`
+afterward) screenshotted `/about` in light mode, dark mode (via
+`prefers-color-scheme` emulation), and a 390px mobile viewport — all
+three clean. The author box's actual photo was verified two ways after an
+initial full-page screenshot made it too small to tell anything from: a
+direct `naturalWidth`/`naturalHeight`/`complete` check on the real `<img>`
+element (128×128, fully loaded) and a cropped screenshot of the author-box
+element alone, which shows the real photo rendering correctly, circular,
+at full quality.
+
+**Verified overall:** `npm run build` (30 routes, Pagefind still indexing
+4 pages — now 724 words, up slightly since the author box's real name/
+title text is inside the indexed article body) and `astro check`
+(0 errors/warnings/hints) both pass clean.
+
 **Next up (redesign rollout):** session 6 — go live: merge `redesign` into
 `main` after merging latest `main` into it first, tag `v1.1-redesign`,
 final CHANGELOG entry. `docs/UPDATE-WORKFLOW.md` section 7, step 6. The
-branch is now fully audited and clean going into that step.
+branch is now fully audited, has real author/About content, and is clean
+going into that step.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;

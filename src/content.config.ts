@@ -57,15 +57,21 @@ const series = defineCollection({
 // Site-wide author config (docs/BUSINESS-PLAN.md: a single founder voice,
 // not per-article bylines). One entry, edited as a Keystatic singleton
 // (see keystatic.config.ts) rather than a code file, since the owner isn't
-// a developer. Ships with placeholder content — same "don't fabricate real
-// content" precedent as /about's placeholder bio — replace it with the
-// real name/bio at /keystatic under "Author" whenever that's ready.
+// a developer. Now real content (name, title, avatar) — replace at
+// /keystatic under "Author" if any of it changes.
+// `bio` was renamed to `title` (a short role line, e.g. "Founder, Cuerpo
+// Coffee") rather than kept alongside a new bio sentence — no bio copy was
+// ever provided, and inventing one would break this schema's own
+// "don't fabricate real content" precedent (the same one that justified
+// shipping this collection with placeholder text in the first place).
 const author = defineCollection({
   loader: glob({ pattern: 'author.yaml', base: './src/content/author' }),
-  schema: z.object({
-    name: z.string(),
-    bio: z.string(),
-  }),
+  schema: ({ image }) =>
+    z.object({
+      name: z.string(),
+      title: z.string(),
+      avatar: image().optional(),
+    }),
 });
 
 export const collections = { articles, series, author };

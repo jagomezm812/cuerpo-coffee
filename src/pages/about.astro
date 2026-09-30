@@ -1,43 +1,143 @@
 ---
+// v1.1 redesign: the real About page, replacing the placeholder body copy
+// and photo-less layout that shipped with the site's skeleton. A reading
+// page, not a section-banded one — one white band (surface-1, the same
+// "reading body" treatment Article.astro's body uses), a title block, one
+// photo space, and the body copy, all sharing one column (var(--measure))
+// so nothing on the page floats at a random width relative to the text
+// above or below it. rise-in/photo-settle on the title block and hero
+// photo match every other page's opening block, not a new pattern.
+//
+// The sign-off pulls the name/title from the site's one shared author
+// config (src/lib/author.ts) rather than hardcoding the string a second
+// time — today that resolves to exactly the given copy, and stays correct
+// automatically if the author config is ever updated at /keystatic.
 import Base from '../layouts/Base.astro';
 import Prose from '../components/Prose.astro';
+import { Image } from 'astro:assets';
+import { getAuthor } from '../lib/author';
+import aboutHero from '../assets/author/about-hero.jpg';
+
+const author = await getAuthor();
 ---
 
 <Base
   title="About"
-  description="Why Cuerpo Coffee exists, who writes it, and what it's for: helping beginners make good coffee at home without the gear obsession."
+  description="Why Cuerpo Coffee exists and who writes it: two decades of paying attention to coffee, starting from a tree on a family plot of land."
 >
-  <article class="container about">
-    <h1>About</h1>
-    <Prose>
-      <p>
-        Cuerpo Coffee exists because most coffee writing is aimed at people who already
-        know what a refractometer is. This is for everyone else: the people who want a
-        genuinely good cup at home, without buying $2,000 of equipment or memorizing a
-        dozen brewing rituals first.
+  <div class="about-band">
+    <header class="container about__header rise-in">
+      <h1>About</h1>
+      <p class="about__standfirst">
+        Fifteen years old, holding a red coffee cherry I didn't know the name for, on my
+        father's land. That's where this started.
       </p>
-      <p>
-        <!-- TODO (owner): replace with the real bio and a real photograph before launch. -->
-        I got into coffee the way most people do: badly, with a bad burr grinder and worse
-        water. Every article here comes from a mistake I made first, so you don't have to
-        make it too.
-      </p>
-      <p>
-        This publication teaches fundamentals over gear, and troubleshooting over trends.
-        If an article doesn't make your next cup better, it hasn't done its job.
-      </p>
-    </Prose>
-  </article>
+    </header>
+
+    <Image
+      src={aboutHero}
+      alt="Jorge Gomez, founder of Cuerpo Coffee"
+      class="about__hero photo-settle"
+      widths={[480, 768, 1170]}
+      sizes="(min-width: 40rem) 40rem, 100vw"
+      format="avif"
+    />
+
+    <div class="container about__body">
+      <Prose>
+        <p>
+          I've had a cup of coffee every day since I was fourteen. For most of those years,
+          that just meant drinking it. It took a coffee tree to make me actually pay
+          attention.
+        </p>
+        <p>
+          My father kept a piece of land outside the city — a small weekend house, and a
+          much bigger stretch of trees: guava, lemon, apple, berries, mango, orange,
+          potatoes, more flowers than I can name. A few coffee trees were mixed in among
+          them. I noticed the red cherries on the branches before I understood what they
+          were, and once I did, I couldn't leave it alone.
+        </p>
+        <p>
+          My father walked me through the process himself — picking, pulping, drying, the
+          parts most people never see because their coffee already arrives as a bag of brown
+          beans. I processed my own batch. Then I bought a small roaster and roasted my first
+          kilo. I was fifteen.
+        </p>
+        <p>
+          That's not a story about becoming a professional. I didn't go work for a roaster,
+          and I don't have a certification to point to. What I have is closer to twenty years
+          of drinking coffee on purpose — comparing beans, changing variables, noticing what
+          actually moves a cup from fine to good.
+        </p>
+        <p>
+          Somewhere in there it stopped being about the caffeine. I built a small coffee bar
+          in my own house, bought a real espresso machine and the accessories that go with
+          it, and turned the first cup of the morning into something closer to a ritual than
+          a habit. I don't drink it to wake up anymore. I drink it to slow down before the
+          day asks anything of me.
+        </p>
+        <p>
+          That's the whole premise of this site. Not expertise handed down from a café job,
+          but two decades of paying attention, starting from a tree I couldn't identify at
+          fifteen. If you're standing where I was — curious, slightly obsessed, not sure
+          where to start — that's exactly who this is for.
+        </p>
+        <p class="about__signoff">{author.data.name} — {author.data.title}</p>
+      </Prose>
+    </div>
+  </div>
 </Base>
 
 <style>
-  .about {
+  /* Same "reading body" white band Article.astro's own body sits on —
+     About is a reading page, not a section-banded one. */
+  .about-band {
+    background: var(--surface-1);
     padding-block: var(--space-8);
+  }
+
+  .about__header {
+    max-width: var(--measure);
+    margin-inline: auto;
+    margin-bottom: var(--space-6);
+  }
+
+  .about__standfirst {
+    font-size: var(--step-1);
+    color: var(--espresso);
+    margin-top: var(--space-4);
+  }
+
+  /* Deliberately capped to the same column width as the title/body above
+     and below it, not stretched to the wider article-hero treatment —
+     about-hero.jpg is a portrait-oriented photo (taller than wide), and
+     forcing it to a landscape-hero width would either distort it or crop
+     away the headroom/shoulders it was chosen for. Keeping it at the
+     page's one reading column also means nothing on this page floats at
+     an arbitrary width relative to the text around it. */
+  .about__hero {
+    display: block;
+    width: 100%;
+    max-width: var(--measure);
+    height: auto;
+    margin-inline: auto;
+    margin-bottom: var(--space-8);
+    border-radius: var(--radius-lg);
+  }
+
+  .about__body {
     max-width: var(--measure);
     margin-inline: auto;
   }
 
-  .about h1 {
-    margin-bottom: var(--space-6);
+  /* padding-top + border-top, not margin-top: Prose's own `.prose > * + *`
+     rule already gives this paragraph a margin-top like any other body
+     paragraph — adding a second margin-top here would stack with it, the
+     same class of bug flagged repeatedly elsewhere in this codebase
+     (CLAUDE.md's session 3/4 fixes, the Reflection in-essay photo). */
+  .about__signoff {
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--hairline);
+    font-weight: 700;
   }
 </style>

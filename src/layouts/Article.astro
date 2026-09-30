@@ -11,6 +11,7 @@
 // on the sidebar/capture/author/keep-reading sections keeps chrome-like
 // boilerplate (repeated on every page) out of search results and excerpts.
 import type { CollectionEntry } from 'astro:content';
+import type { ImageMetadata } from 'astro';
 import Base from './Base.astro';
 import Prose from '../components/Prose.astro';
 import EmailCapture from '../components/EmailCapture.astro';
@@ -28,7 +29,7 @@ export interface Props {
   relatedArticles: CollectionEntry<'articles'>[];
   headings: { depth: number; slug: string; text: string }[];
   seriesGroup?: SeriesGroup;
-  author: { name: string; bio: string };
+  author: { name: string; title: string; avatar?: ImageMetadata };
 }
 
 const { article, readingTimeMinutes, relatedArticles, headings, seriesGroup, author } = Astro.props;
@@ -121,7 +122,7 @@ const h2Count = headings.filter((h) => h.depth === 2).length;
         </div>
 
         <div class="article__author" data-pagefind-ignore>
-          <AuthorBox name={author.name} bio={author.bio} />
+          <AuthorBox name={author.name} title={author.title} avatar={author.avatar} />
         </div>
       </div>
     </div>
