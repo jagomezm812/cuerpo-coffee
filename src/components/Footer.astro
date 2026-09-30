@@ -1,8 +1,9 @@
 ---
-// Language switcher logic is unchanged from before this session — only its
-// styling moved to fit the new always-dark footer band. See
-// src/components/LanguagePrompt.tsx and worker/index.ts for the rest of
-// how ?setlang= works.
+// Language switcher: links to the dedicated /set-language path
+// (worker/index.ts) rather than appending ?setlang= to whatever page
+// you're already on — see wrangler.jsonc's run_worker_first comment for
+// why that change mattered (it's what let run_worker_first go back to a
+// short explicit list instead of every single request).
 export interface Props {
   lang?: 'en' | 'es';
   otherLangHref?: string;
@@ -10,8 +11,8 @@ export interface Props {
 
 const { lang = 'en', otherLangHref = lang === 'es' ? '/' : '/es/articles' } = Astro.props;
 
-function withSetLang(href: string, target: 'en' | 'es'): string {
-  return `${href}${href.includes('?') ? '&' : '?'}setlang=${target}`;
+function setLanguageHref(target: 'en' | 'es', destination: string): string {
+  return `/set-language?to=${target}&href=${encodeURIComponent(destination)}`;
 }
 
 const year = new Date().getFullYear();
@@ -53,7 +54,7 @@ const cuerpoLinks = [
         lang === 'en' ? (
           <span aria-current="true">English</span>
         ) : (
-          <a href={withSetLang(otherLangHref, 'en')}>English</a>
+          <a href={setLanguageHref('en', otherLangHref)}>English</a>
         )
       }
       <span aria-hidden="true"> · </span>
@@ -61,7 +62,7 @@ const cuerpoLinks = [
         lang === 'es' ? (
           <span aria-current="true">Español</span>
         ) : (
-          <a href={withSetLang(otherLangHref, 'es')}>Español</a>
+          <a href={setLanguageHref('es', otherLangHref)}>Español</a>
         )
       }
     </p>

@@ -1995,11 +1995,159 @@ standfirst, and the sign-off re-verified verbatim against the built HTML
 output, not assumed unchanged just because the JSX text nodes weren't
 directly edited.
 
+## v1.1 redesign, pre-session-6: `run_worker_first` narrowed back to a list, docs cleanup
+
+**Status: built on branch `redesign`, not merged, not live.** The backlog
+item from session 2's i18n work (`docs/BACKLOG.md`), fixed before going
+live rather than carried into `main` as tech debt.
+
+**The actual fix:** the language switcher (`Footer.astro`) moved off
+appending `?setlang=en|es` to whatever page it's clicked from, onto its
+own dedicated path — `/set-language?to=en|es&href=<destination>`
+(`worker/index.ts`). A request to that path has no matching static asset
+(there's no such Astro page), so it reaches the Worker on its own, the
+same way `/api/*` and `/keystatic` always have — meaning
+`wrangler.jsonc`'s `run_worker_first` no longer needs to be `true` for
+every single request just so the switcher keeps working. Narrowed to an
+explicit list: `["/", "/set-language", "/api/*", "/keystatic",
+"/keystatic/*"]`. Every other request — every article, image, and font —
+now goes straight to the static asset with no Worker invocation at all,
+which was the entire point of the backlog item.
+**The list's exact syntax was verified against Wrangler's own source, not
+assumed from memory:** found a cached copy of the `wrangler` package (from
+an earlier session's `npx wrangler whoami`) and read
+`parseStaticRouting()`/`validateStaticRoutingRules()` directly — confirmed
+`run_worker_first` accepts an array of strings, each required to start
+with `/` (or `!/` for a negative/exclude rule, not needed here), with `*`
+supported as a trailing wildcard. The list this session ships matches that
+grammar exactly, checked before trusting it.
+**A real security concern addressed, not overlooked:** `href` on the new
+`/set-language` endpoint comes from a public query parameter and gets used
+as a redirect `Location` — without validation, that's a textbook open
+redirect (`/set-language?to=en&href=https://evil.com` would otherwise send
+a visitor's browser to an attacker's site with this project's own domain
+in the address bar at the moment of the click). Added `isSafeRelativePath()`
+— requires a single leading `/`, explicitly rejects `//` (which browsers
+can treat as protocol-relative, i.e. still an open redirect to whatever
+host follows it) — and falls back to the safe default target whenever
+`href` fails that check. Verified both the attack and the fix directly via
+curl against a real local Worker, not just reasoned about: `href=https://
+evil.com` and `href=%2F%2Fevil.com` (URL-encoded `//evil.com`) both
+correctly fell back to `/`, not the attacker-supplied destination.
+
+**Verified against the real Worker, not just `astro preview`** — `astro
+preview` only serves the static build and never executes `worker/
+index.ts`, so it can't actually exercise anything this fix touches.
+Installed `wrangler` transiently via `npx` (not added to `package.json`)
+and ran `wrangler dev` locally, which does run the real Worker against the
+real static output. `/api/keystatic/github/login` initially 500'd under
+this setup — traced to missing local secrets, not a regression: this
+project's two real Keystatic secrets are dashboard-only and were never
+available locally. Created a **local-only** `.dev.vars` with fake
+placeholder values (never real secrets) to actually exercise that code
+path rather than leave it untested — and along the way found `.dev.vars`
+itself was missing from `.gitignore` (only `.env`/`.env.production` were
+listed), a real gap fixed while it was in front of me, independent of
+whether this session happened to use the file. Deleted `.dev.vars` after
+testing; `.gitignore` keeps the fix.
+**Every dependent behavior re-verified, all five asked for**, with real
+curl/browser checks against the running Worker, not assumed from reading
+the diff:
+- `/set-language?to=es&href=/articles/.../` → real 302, correct
+  `Set-Cookie`, correct `Location`.
+- The returning-visitor redirect on `/` (cookie already `es`) → real 307
+  to `/es/articles`, unaffected by the narrower list since `/` is still
+  in it.
+- Keystatic login → 307 to GitHub with `scope=public_repo` still present
+  (the OAuth scope patch from the original Keystatic work); a bad OAuth
+  callback code → clean 401, not a crash. Saving itself wasn't
+  re-exercised this session (that needs the real GitHub App and a real
+  repo write) — the login leg, the one this fix's routing actually
+  touches, was.
+- `/api/subscribe` → all its documented response codes unchanged (502
+  with a fake Kit key, 400 on malformed JSON, 405 on GET).
+- The search dropdown → unaffected, as expected (Pagefind's files were
+  already plain static assets never routed through the Worker's own
+  logic) — reconfirmed by actually typing a query against the live Worker
+  and getting real results back, not just assumed safe.
+- The language switcher and first-visit prompt specifically, via a real
+  Chrome tab (`puppeteer-core`, `--no-save`, removed after) against
+  `wrangler dev`: clicking "Español" on the first-visit prompt correctly
+  set the cookie and navigated to the real Spanish translation; clicking
+  "English" in the footer on that Spanish page correctly used the new
+  `/set-language` URL (confirmed by reading the link's actual `href`
+  attribute, not just that the click worked) and returned to the English
+  original with the cookie flipped back.
+
+**Docs audit (`docs/DESIGN-SYSTEM.md`, `docs/TECHNICAL-PLAN.md`), checked
+against the real codebase rather than skimmed:**
+- `DESIGN-SYSTEM.md` referenced a `guidelines/10-page-template.md` twice —
+  that file never existed anywhere in the repo; the content it would have
+  held already lives inline in the same document. Fixed both references
+  to point at the actual section instead of a dead link.
+- The "leaf ornament and rule that close an article" was listed as an
+  established olive-marker pattern — grepped the whole codebase and
+  confirmed no component or style for it exists anywhere. Flagged
+  explicitly rather than silently left implying it's live.
+- Container width said 1200px; the real built value (`global.css`'s
+  `.container`) is 1152px (`72rem`). Fixed to the real number.
+- The copper-usage list was missing the search dropdown's match
+  highlight (a genuinely new, intentional use from this redesign) and
+  didn't distinguish it from several pre-redesign surfaces that still use
+  the old, wider copper footprint on purpose (tracked elsewhere, not new
+  scope creep) — added both distinctions.
+- `--radius-md` (20px, labeled "callouts" in the token comment) turned
+  out to have exactly one real consumer, the search dropdown — the
+  About page's pull-quote and sign-off cards, also arguably "callouts,"
+  used the 28px card radius instead. Rather than retroactively change
+  shipped code over a debatable category boundary, documented what's
+  actually built: 20px for compact embedded UI, 28px for standalone card
+  moments, both legitimate.
+- The Author box section-type table still said "two-sentence bio" —
+  that field was renamed to `title` (a short role line) two sessions ago
+  specifically because no bio sentence was ever provided. Fixed.
+- Added a `## Search` entry to the Components section — a real, working,
+  previously-undocumented feature — and a short clarifying note on the
+  header anatomy line: search is a round icon button linking out to
+  Explore's real field, not an inline bar in the header itself; only two
+  of the header's stated four links exist today.
+- Page-entrance motion's description covered only "hero and title
+  blocks" — it now also staggers grid/list content (Start here, Latest,
+  Explore's topic tiles) at the same step, capped at 240ms. Expanded the
+  description to match.
+- `TECHNICAL-PLAN.md`'s top amendment note still framed the redesign as
+  merely "approved," not built — rewritten to say what's actually true
+  (six sessions built, on branch `redesign`, not yet merged) and to point
+  at this file's own Progress section as the live source of truth instead
+  of attempting to keep every section of that older document in sync by
+  hand. Its "open item" about the language prompt's React cost was
+  answered in an earlier session (a disclosed, deliberate exception, not
+  a pending confirmation) — marked resolved instead of left open.
+  Section 5's schema example was genuinely wrong, not just old: missing
+  `lang`, `translationKey`, `series`, `seriesOrder`, and the `'reflection'`
+  category entirely, and naming a file path (`src/content/config.ts`)
+  that doesn't match where Astro 7 actually requires this config to live.
+  Fixed to the real current schema, with a note on why each field exists.
+  Sections 3, 4, 9, and 11 are flagged as still stale in the amendment
+  note rather than individually rewritten — a full rewrite risked
+  duplicating what this file's own Progress section already tracks more
+  precisely, and drifting out of sync again regardless.
+
+**Verified overall:** `npm run build` (30 routes) and `astro check`
+(0 errors/warnings/hints) both pass clean. `npx tsc --noEmit` also run
+across the whole project (Astro's own `check` doesn't cover
+`worker/index.ts`, which lives outside `src/` but is still included by
+`tsconfig.json`) — clean, confirming the Worker's own TypeScript is sound
+too. `wrangler` and `puppeteer-core` both used only via `npx`/`--no-save`
+and confirmed gone afterward (`git status` clean on `package.json`/
+`package-lock.json`).
+
 **Next up (redesign rollout):** session 6 — go live: merge `redesign` into
 `main` after merging latest `main` into it first, tag `v1.1-redesign`,
 final CHANGELOG entry. `docs/UPDATE-WORKFLOW.md` section 7, step 6. The
 branch is now fully audited, has real author/About content and layout,
-and is clean going into that step.
+the `run_worker_first` tech debt is resolved, and both planning docs are
+current — clean going into that step.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;
