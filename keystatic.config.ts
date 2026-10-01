@@ -87,7 +87,26 @@ export default config({
         heroImage: fields.image({
           label: 'Hero image',
           description: 'Optional. Set alt text below if you add one.',
+          // `directory` alone only controls where Keystatic physically
+          // saves the file (confirmed by reading @keystatic/core's own
+          // image field source: it writes to `directory/<slug>/<filename>`
+          // regardless of this next setting) — it does NOT, on its own,
+          // make the frontmatter value it writes match that path. Without
+          // `publicPath`, the field's own serialize() falls back to an
+          // empty prefix and writes just the bare filename (e.g.
+          // `heroImage.jpg`), which Astro's content-collection image()
+          // schema then resolves relative to the .md file's own directory
+          // (src/content/articles/) — landing on a path that doesn't
+          // exist, since the real file is one level deeper, in a
+          // per-slug subfolder. A real upload through this exact field
+          // reproduced this: Keystatic saved and committed successfully,
+          // but the next build failed with ImageNotFound. `publicPath`
+          // here makes the WRITTEN value match where the file actually
+          // is — getSrcPrefix() (also read directly from the source)
+          // combines it with the slug the same way `directory` already
+          // does for the physical save, so the two finally agree.
           directory: 'src/content/articles/images',
+          publicPath: 'images/',
           validation: { isRequired: false },
         }),
         heroAlt: fields.text({

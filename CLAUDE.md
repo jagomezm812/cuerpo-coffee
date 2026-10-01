@@ -2142,12 +2142,112 @@ too. `wrangler` and `puppeteer-core` both used only via `npx`/`--no-save`
 and confirmed gone afterward (`git status` clean on `package.json`/
 `package-lock.json`).
 
-**Next up (redesign rollout):** session 6 — go live: merge `redesign` into
-`main` after merging latest `main` into it first, tag `v1.1-redesign`,
-final CHANGELOG entry. `docs/UPDATE-WORKFLOW.md` section 7, step 6. The
-branch is now fully audited, has real author/About content and layout,
-the `run_worker_first` tech debt is resolved, and both planning docs are
-current — clean going into that step.
+## v1.1 redesign, post-photos: real Home + article photos, a real Keystatic bug
+
+**Status: built on branch `redesign`, not merged, not live.** Two real,
+licensed stock photos (temporary — see the `docs/BACKLOG.md` flag below)
+replaced flat placeholder blocks: the Home hero and the "Why Your Coffee
+Tastes Sour" article hero.
+
+**Home hero (`home-hero.jpg`, `src/assets/home/`):** wired through Astro's
+`<Image>`, same pattern as the About page's own hero. The text that used to
+sit directly on the flat `--tile-dark` fill moved into its own
+`.hero-card__content` wrapper so the photo and a scrim can sit behind it at
+`position: absolute` without restructuring the existing label/title/
+description/buttons markup. **The scrim is a flat, uniform dark overlay,
+not a gradient** — `docs/DESIGN-SYSTEM.md`'s "No gradients" is a blanket
+rule (Shape, space, depth section), not scoped to olive specifically, so a
+left-to-right fade (the more "editorial" option) would have been a real
+rule violation, not just a style choice. Contrast verified against the
+*actual rendered photo pixels* behind the text (sampled via canvas, then
+composited with the scrim's own alpha) rather than just the scrim's flat
+color alone, which would have ignored the photo showing through it — label
+8.90:1, description 5.74:1, both comfortably past 4.5:1.
+
+**Article hero, and a real pre-existing bug found while wiring it up —
+worth recording in full, the same way the GitHub OAuth scope issue and the
+Keystatic `_redirects` issue were:** the owner uploaded
+`sour-coffee-hero.jpg` directly through Keystatic's own Hero image field,
+exactly as the field was designed to be used. It saved and committed to
+`main` successfully (Keystatic's GitHub storage mode has no `branchPrefix`
+configured, so it commits straight to the repo's default branch — flagged
+to the owner *before* they clicked upload, not discovered after) — but the
+very next build failed outright: `[ImageNotFound] Could not find requested
+image 'heroImage.jpg'`.
+**Root cause, found by reading `@keystatic/core`'s own `fields.image()`
+source directly, not guessed:** the field's `directory` option
+(`src/content/articles/images`, set back in session 4) only controls where
+Keystatic *physically saves* the uploaded file — confirmed the real file
+landed at `src/content/articles/images/why-your-coffee-tastes-sour/
+heroImage.jpg`, a genuine per-slug subfolder Keystatic creates on its own.
+But the *frontmatter value* Keystatic writes is computed completely
+separately, by a different option (`publicPath`) that was never set — and
+reading `getSrcPrefix()`'s implementation confirmed that with no
+`publicPath`, the prefix is simply empty, so Keystatic wrote just the bare
+filename (`heroImage.jpg`) into frontmatter. Astro's content-collection
+`image()` schema then resolved that bare filename relative to the `.md`
+file's own directory (`src/content/articles/`) — one level up from where
+the file actually is. **This field has existed since session 4 and had
+never been exercised with a real upload until this one** — confirming
+again this codebase's own repeated lesson that "the field exists and is
+configured" is not the same claim as "the field actually works end to
+end."
+**Fixed at the root, not patched around:** added `publicPath: 'images/'`
+to the field in `keystatic.config.ts`, so the string Keystatic writes now
+agrees with where it actually saves the file — verified by reading
+`getSrcPrefix()`'s own logic, not just hoped: with `publicPath` set, it
+produces `images/<slug>/`, combined with the filename, exactly matching
+the real per-slug subfolder path. The one already-broken frontmatter value
+was hand-corrected to match (`images/why-your-coffee-tastes-sour/
+heroImage.jpg`) so this build works today; the config fix means the next
+upload through this same field won't need the same manual correction.
+**Important, flagged plainly rather than silently handled:** this
+`keystatic.config.ts` fix only exists on `redesign` so far. The *same*
+field, with the *same* bug, still exists on `main` right now — the next
+time anyone uploads a hero image for a *different* article through the
+live Keystatic editor, it will hit the identical `ImageNotFound` build
+failure. Fixing `main`'s copy of this config is a small, independent,
+code-only change — deliberately not made as a side effect of this
+redesign-branch session without being asked, since it's a change to `main`
+outside the branch/preview/approve workflow everything else here has used.
+**Needs its own explicit go-ahead before it happens.**
+**The requested caption update was not made — genuinely not found, not
+skipped.** Asked to update "the caption underneath that photo, currently
+describing a V60 drip," to match the new espresso-pour photo. Searched
+thoroughly before concluding anything: the full article body (no mention
+of grounds, V60, or a caption of any kind), `heroAlt` (already correctly
+"Espresso pouring into a glass cup." — Keystatic set it correctly), the
+rendered build output around the hero image (no `<figcaption>` or any
+visible text there at all, confirmed directly in the compiled HTML and by
+screenshot), `main`'s own pre-redesign `Article.astro` (in case this was a
+leftover from the old template), and every content file in the repo for
+the described phrase ("medium-fine grounds," "water passing through,"
+"V60") — zero matches anywhere, on either branch. Reported this back
+rather than guessing at an edit to content that, as far as this repo is
+concerned, doesn't exist.
+
+**Verified in a real browser, both photos, all three surfaces asked for:**
+`puppeteer-core` (`--no-save`, removed after) screenshotted both the Home
+hero and the article hero in light mode, dark mode, and a 390px mobile
+viewport — all six renders confirmed clean, plus a direct check on the
+article hero's actual `<img>` (`complete: true`, correct `alt`, real
+`naturalWidth`) rather than assuming a successful build meant a correctly
+rendered image.
+
+**Verified overall:** `npm run build` (30 routes) and `astro check`
+(0 errors/warnings/hints) both pass clean — including the real build
+failure found and fixed along the way, not just the final green run.
+
+**Next up (redesign rollout):** decide whether to fix `main`'s own copy of
+the `keystatic.config.ts` `heroImage` bug (small, independent, needs its
+own go-ahead — see above) before or alongside session 6. Then session 6
+itself — go live: merge `redesign` into `main` after merging latest `main`
+into it first, tag `v1.1-redesign`, final CHANGELOG entry.
+`docs/UPDATE-WORKFLOW.md` section 7, step 6. The branch is now fully
+audited, has real author/About/Home/article-hero content, the
+`run_worker_first` tech debt is resolved, and both planning docs are
+current — clean going into that step, modulo the `main`-side Keystatic fix
+above.
 
 **Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
 (`@astrojs/sitemap` — next new dependency, build-time only, no client cost;
