@@ -7,14 +7,29 @@ export interface Props {
     publishDate: Date;
     updatedDate?: Date;
   };
+  // Session 5: Reflection essays open dark by default, regardless of
+  // system preference — the one exception to the site-wide "follow
+  // prefers-color-scheme unless the visitor already chose" rule. Passed
+  // through from Base.astro, which is the only place that sets it (via
+  // ReflectionArticle.astro). Still fully overridable: an explicit
+  // cuerpo_theme='light' in localStorage (the visitor clicking the
+  // toggle) always wins over this.
+  forceDark?: boolean;
 }
 
-const { title, description, image, articleMeta } = Astro.props;
+const { title, description, image, articleMeta, forceDark = false } = Astro.props;
 
 const siteName = 'Cuerpo Coffee';
 const fullTitle = title === siteName ? title : `${title} — ${siteName}`;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const ogImage = image ? new URL(image, Astro.site).toString() : undefined;
+
+// The forceDark flag is baked into the minified script text below as a
+// literal `true`/`false` at build time (via set:html) rather than read
+// from a data-attribute at runtime — one fewer DOM read on every page
+// load, and it means this page's actual resolved default is visible
+// directly in its own HTML source, not just implied by a prop.
+const themeScript = `(function(){try{var t=localStorage.getItem('cuerpo_theme'),d=t?t==='dark':(${forceDark}||matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.dataset.theme='dark'}catch(e){}})();`;
 ---
 
 <meta charset="utf-8" />
@@ -26,18 +41,43 @@ const ogImage = image ? new URL(image, Astro.site).toString() : undefined;
 
 <link
   rel="preload"
-  href="/fonts/inter-400.woff2"
+  href="/fonts/manrope-variable.woff2"
   as="font"
   type="font/woff2"
   crossorigin
 />
 <link
   rel="preload"
-  href="/fonts/fraunces-600.woff2"
+  href="/fonts/fraunces-variable.woff2"
   as="font"
   type="font/woff2"
   crossorigin
 />
+
+{/*
+  Sets the theme before first paint so there's no flash of the wrong
+  theme. is:inline means Astro ships this byte-for-byte, uncompressed —
+  hand-minified rather than written readably, to stay well under the 1 KB
+  budget for the whole dark-mode feature (measured: 199 bytes here on a
+  normal page, up from 191 in session 2 — the `(${forceDark}||...)` wrapper
+  costs 8 extra bytes on every page, not just Reflection ones, since the
+  script text has to be able to say `false` explicitly. 442 in
+  Header.astro's click handler, unchanged; 641 combined on a normal page).
+  See Header.astro for the other half — same logic, unminified, for
+  reference:
+
+    (function () {
+      try {
+        var stored = localStorage.getItem('cuerpo_theme');
+        var forceDark = false; // baked in per-page by BaseHead's forceDark prop
+        var dark = stored
+          ? stored === 'dark'
+          : forceDark || matchMedia('(prefers-color-scheme: dark)').matches;
+        if (dark) document.documentElement.dataset.theme = 'dark';
+      } catch (e) {}
+    })();
+*/}
+<script is:inline set:html={themeScript} />
 
 <meta property="og:type" content={articleMeta ? 'article' : 'website'} />
 <meta property="og:site_name" content={siteName} />

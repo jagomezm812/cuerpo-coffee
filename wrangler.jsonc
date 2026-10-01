@@ -13,18 +13,28 @@
     // Cloudflare serves a matching static asset directly by default,
     // WITHOUT invoking the Worker's fetch() at all. First discovered
     // scoped to "/" only (the language-redirect check there silently never
-    // ran). Widened to `true` (every request) after the footer's language
-    // switcher (?setlang=en|es, worker/index.ts) turned out to need the
-    // exact same treatment on EVERY page — confirmed directly: a request
-    // to /articles/some-slug?setlang=en was served straight from the
-    // matching static asset, dropping the query string and never touching
-    // the Worker, even with run_worker_first scoped to just "/". Since the
-    // switcher can be clicked from any page, there's no fixed path list to
-    // scope this to — every request needs to pass through the Worker
-    // first. The cost is one extra Worker invocation per static asset
-    // request; the Worker's own final fallback (env.ASSETS.fetch) still
-    // serves them normally.
-    "run_worker_first": true
+    // ran). Widened to `true` (every request) once the footer's language
+    // switcher (?setlang=en|es) turned out to need the exact same
+    // treatment on EVERY page — a request to /articles/some-slug?setlang=en
+    // was served straight from the matching static asset, dropping the
+    // query string and never touching the Worker, even with
+    // run_worker_first scoped to just "/". Since the switcher could point
+    // at any page on the site, there was no fixed path list to scope this
+    // to at the time.
+    // Narrowed back to an explicit list once the switcher itself moved to
+    // its own dedicated path (/set-language, worker/index.ts) instead of
+    // appending ?setlang= to whatever page you're already on — a request
+    // to /set-language never has a matching static asset (there's no such
+    // Astro page), so it falls through to the Worker on its own, same as
+    // /api/* and /keystatic already did before this. Listed explicitly
+    // here anyway, not relied on implicitly, so this stays correct even if
+    // a future static file ever happened to collide with one of these
+    // paths. Wildcard syntax confirmed against wrangler's own
+    // parseStaticRouting validation (every rule must start with "/", "*"
+    // is a supported trailing wildcard) before trusting it, not assumed
+    // from memory. Every other request — every article, image, and font —
+    // now goes straight to the static asset, no Worker invocation at all.
+    "run_worker_first": ["/", "/set-language", "/api/*", "/keystatic", "/keystatic/*"]
   },
   // Plain (non-secret) vars only — `wrangler deploy` wipes any dashboard-set
   // plain-text vars on every deploy unless they're declared here, which bit

@@ -1,0 +1,68 @@
+---
+// Table of contents, built from the article's own h2 headings — zero JS:
+// Astro's content pipeline already assigns each heading a stable slug id
+// (confirmed in the build output), so this is just a list of plain anchor
+// links. Only rendered by the caller when there are at least two h2s (a
+// "contents" list for one heading is noise).
+//
+// No `position: sticky` here on purpose — it lives on the shared
+// `.article__sidebar` wrapper in Article.astro instead, one sticky
+// container around both this and SeriesRail. Two independently-sticky
+// siblings (this used to be sticky on its own) each stick to the same
+// viewport offset without moving each other down, so the second one's
+// normal-flow position ends up scrolling up underneath the first —
+// visually overlapping it. One sticky ancestor, with ordinary stacked
+// block children inside it, is the correct fix.
+export interface Props {
+  headings: { depth: number; slug: string; text: string }[];
+}
+
+const { headings } = Astro.props;
+const h2s = headings.filter((h) => h.depth === 2);
+---
+
+<nav class="toc" aria-label="Table of contents">
+  <p class="toc__label">On this page</p>
+  <ol>
+    {
+      h2s.map((h) => (
+        <li>
+          <a href={`#${h.slug}`}>{h.text}</a>
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+
+<style>
+  .toc__label {
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--olive-text);
+    margin-bottom: var(--space-3);
+  }
+
+  .toc ol {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    border-left: 1px solid var(--hairline);
+  }
+
+  .toc a {
+    display: block;
+    padding-left: var(--space-4);
+    color: var(--muted);
+    font-size: var(--step--1);
+    text-decoration: none;
+    line-height: 1.4;
+  }
+
+  .toc a:hover {
+    color: var(--ink);
+  }
+</style>

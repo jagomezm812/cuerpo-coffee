@@ -1,4 +1,4 @@
-import { config, fields, collection } from '@keystatic/core';
+import { config, fields, collection, singleton } from '@keystatic/core';
 
 const CATEGORY_OPTIONS = [
   { label: 'Troubleshooting', value: 'troubleshooting' },
@@ -6,6 +6,7 @@ const CATEGORY_OPTIONS = [
   { label: 'Gear', value: 'gear' },
   { label: 'Methods', value: 'methods' },
   { label: 'Sourcing', value: 'sourcing' },
+  { label: 'Reflection', value: 'reflection' },
 ] as const;
 
 const LANG_OPTIONS = [
@@ -68,6 +69,17 @@ export default config({
           collection: 'articles',
           validation: { isRequired: false },
         }),
+        series: fields.relationship({
+          label: 'Series',
+          description: 'Only set this if the article is part of a series. Also set the position below.',
+          collection: 'series',
+          validation: { isRequired: false },
+        }),
+        seriesOrder: fields.integer({
+          label: 'Position in series',
+          description: 'Only set this alongside Series above (1, 2, 3, ...).',
+          validation: { isRequired: false },
+        }),
         tags: fields.array(fields.text({ label: 'Tag' }), {
           label: 'Tags',
           itemLabel: (props) => props.value || 'Tag',
@@ -75,7 +87,26 @@ export default config({
         heroImage: fields.image({
           label: 'Hero image',
           description: 'Optional. Set alt text below if you add one.',
+          // `directory` alone only controls where Keystatic physically
+          // saves the file (confirmed by reading @keystatic/core's own
+          // image field source: it writes to `directory/<slug>/<filename>`
+          // regardless of this next setting) — it does NOT, on its own,
+          // make the frontmatter value it writes match that path. Without
+          // `publicPath`, the field's own serialize() falls back to an
+          // empty prefix and writes just the bare filename (e.g.
+          // `heroImage.jpg`), which Astro's content-collection image()
+          // schema then resolves relative to the .md file's own directory
+          // (src/content/articles/) — landing on a path that doesn't
+          // exist, since the real file is one level deeper, in a
+          // per-slug subfolder. A real upload through this exact field
+          // reproduced this: Keystatic saved and committed successfully,
+          // but the next build failed with ImageNotFound. `publicPath`
+          // here makes the WRITTEN value match where the file actually
+          // is — getSrcPrefix() (also read directly from the source)
+          // combines it with the slug the same way `directory` already
+          // does for the physical save, so the two finally agree.
           directory: 'src/content/articles/images',
+          publicPath: 'images/',
           validation: { isRequired: false },
         }),
         heroAlt: fields.text({
@@ -96,6 +127,45 @@ export default config({
         content: fields.markdoc({
           label: 'Content',
           extension: 'md',
+        }),
+      },
+    }),
+    series: collection({
+      label: 'Series',
+      slugField: 'title',
+      path: 'src/content/series/*',
+      format: 'yaml',
+      columns: ['title'],
+      schema: {
+        title: fields.slug({ name: { label: 'Title' } }),
+        description: fields.text({
+          label: 'Description',
+          multiline: true,
+          validation: { isRequired: true },
+        }),
+      },
+    }),
+  },
+  singletons: {
+    // Site-wide author config (docs/BUSINESS-PLAN.md: one founder voice,
+    // not per-article bylines) — edited here, once, rather than as a code
+    // file, since the owner isn't a developer.
+    author: singleton({
+      label: 'Author',
+      path: 'src/content/author/author',
+      format: 'yaml',
+      schema: {
+        name: fields.text({ label: 'Name', validation: { isRequired: true } }),
+        title: fields.text({
+          label: 'Title',
+          description: 'A short role line, e.g. "Founder, Cuerpo Coffee".',
+          validation: { isRequired: true },
+        }),
+        avatar: fields.image({
+          label: 'Avatar',
+          description: 'A tight square headshot — used in the author box at the end of every article.',
+          directory: 'src/assets/author',
+          validation: { isRequired: false },
         }),
       },
     }),

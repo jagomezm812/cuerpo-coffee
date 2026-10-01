@@ -1,0 +1,87 @@
+---
+// The Reflection strip from docs/DESIGN-SYSTEM.md: a dark band (`--roast`)
+// holding the site's second (and last) photo space, shown only when a
+// published "reflection" article actually exists — there is no fallback
+// content, per the page template's "a section with nothing to show yet is
+// hidden entirely" rule. index.astro only renders this component when it
+// has an article to show.
+import type { CollectionEntry } from 'astro:content';
+import { getArticleHref } from '../lib/articles';
+
+export interface Props {
+  article: CollectionEntry<'articles'>;
+}
+
+const { article } = Astro.props;
+const href = getArticleHref(article);
+---
+
+<section class="reflection-strip">
+  <div class="container reflection-strip__inner">
+    {/*
+      Photo space 2. A flat, dark placeholder block, not a real photograph —
+      no stock imagery, per project policy. Marked aria-hidden rather than
+      given fabricated alt text/caption: it conveys no actual photographic
+      content yet, so decorative is the honest a11y treatment here. Replace
+      with a real <Image> (see docs/DESIGN-SYSTEM.md's PhotoSpace rules —
+      alt text or a caption, muted/6s-max loop if it becomes a video) once
+      real photography exists.
+    */}
+    <div class="reflection-strip__photo photo-settle" aria-hidden="true"></div>
+    <div class="reflection-strip__content">
+      <p class="reflection-strip__label">Reflection</p>
+      <h2 class="reflection-strip__title">{article.data.title}</h2>
+      <p class="reflection-strip__description">{article.data.description}</p>
+      <a href={href} class="btn btn--outline-on-dark">Read the essay</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .reflection-strip {
+    background: var(--roast);
+    color: var(--ink-on-dark);
+    padding-block: var(--space-9);
+  }
+
+  .reflection-strip__inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-7);
+    align-items: center;
+  }
+
+  .reflection-strip__photo {
+    background: var(--tile-dark);
+    border-radius: var(--radius-lg);
+    aspect-ratio: 4 / 3;
+    width: 100%;
+  }
+
+  .reflection-strip__label {
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--olive-on-dark);
+    margin-bottom: var(--space-3);
+  }
+
+  .reflection-strip__title {
+    font-size: var(--step-2);
+    color: var(--ink-on-dark);
+    margin-bottom: var(--space-4);
+  }
+
+  .reflection-strip__description {
+    color: var(--muted-on-dark);
+    margin-bottom: var(--space-6);
+    max-width: var(--measure);
+  }
+
+  @media (max-width: 40rem) {
+    .reflection-strip__inner {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

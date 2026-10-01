@@ -1,30 +1,106 @@
 /*
-  Design tokens. Every color, size, and space value in the site comes from here.
-  No hardcoded colors or sizes anywhere else in the codebase.
+  Design tokens. Every color, size, and space value in the site comes from
+  here. No hardcoded colors or sizes anywhere else in the codebase.
+
+  v1.1 redesign (docs/DESIGN-SYSTEM.md, section 6 of docs/TECHNICAL-PLAN.md).
+  This is a colors-and-fonts-only session: the full new token set below is
+  now in place, but existing components still reference the OLD token names
+  (--crema, --paper, --espresso, --copper, --line). Rather than touch every
+  component this session, those old names are kept as ALIASES pointing at
+  the closest new token — see the "Aliases for v1.0 token names" block below
+  for the exact mapping and reasoning. A later (component) session should
+  migrate components to the new names directly and delete the aliases.
 */
 
 :root {
-  /* Color: six colors plus a line color. Do not add a seventh. */
-  --ink: #1a1614; /* body text, near-black warm */
-  --espresso: #3b2c24; /* secondary text, borders */
-  --muted: #6e625a; /* metadata, captions — darkened from spec's #8A7B70, which failed WCAG AA (3.51:1 on --crema); this hits 5.08:1 */
-  --crema: #f4ede4; /* page background */
-  --paper: #fbf9f6; /* card/raised surfaces */
-  --copper: #8c4b2f; /* the single accent: links, rules, small marks */
-  --line: rgba(26, 22, 20, 0.12);
+  /* New palette (light) — exact names and values from TECHNICAL-PLAN.md
+     section 6. Most of these aren't referenced by any component yet;
+     that's expected this session — later sessions build the components
+     that use them (buttons, tiles, bands, dark-mode toggle). */
+  --surface-1: #ffffff; /* white band: page, header, article body */
+  --surface-2: #f5efe6; /* cream band */
+  --surface-3: #e9dfd1; /* sand band */
+  --surface-card: #ffffff; /* cards on cream or sand bands */
+  --ink: #1b1410; /* text */
+  --muted: #6b5f56; /* secondary text: 5.4:1 on cream, 4.7:1 on sand */
+  --hairline: #e9e1d7;
+  --hairline-strong: #ddd1c2;
+  --border: #d4c7b8;
+  --olive: #59633a; /* SECTION accent only: Troubleshooting tile and category pills */
+  --olive-text: #59633a; /* section labels, category names, rings, quote rule, progress line, leaf */
+  --accent: #8a4e35; /* copper fill: a small warm spark (Sourcing tile) */
+  --accent-text: #8a4e35;
+  --accent-tint: #f3e3d8; /* copper text, New badge */
+  --button-bg: #1b1410; /* EVERY button, active chip, avatar disc */
+  --button-fg: #ffffff;
+  --tile-sand: #e9dfd1;
+  --tile-sand-ink: #1b1410;
+  --tile-dark: #2a1d16;
+  --tile-black: #120c09;
+  --roast: #2a1d16;
+  --footer: #120c09;
+  --ink-on-dark: #f3eadf;
+  --muted-on-dark: #bbac9d;
+  --accent-on-dark: #e3ad84;
+  --olive-on-dark: #a9b47f;
+  --shadow-lift: 0 24px 48px rgba(27, 20, 16, 0.1);
+
+  /* Aliases for v1.0 token names — temporary, remove once components are
+     migrated to the new names directly. Each picks the closest new token;
+     defined once here (not repeated under [data-theme="dark"]) because a
+     CSS custom property reference resolves live against whatever scope is
+     active, so these automatically follow the dark-mode override of their
+     target below with no extra code.
+       --crema    -> --surface-2   (both mean "the cream band")
+       --paper    -> --surface-card (both mean "card / raised surface")
+       --espresso -> --ink          (closest by color distance to #3B2C24;
+                                      makes old "secondary" text as dark as
+                                      primary text for now — a real, visible
+                                      hierarchy flattening, not just a color
+                                      swap. Revisit when components move to
+                                      real --ink/--muted usage directly.)
+       --copper   -> --accent-text  (the dark-mode-safe variant, since old
+                                      --copper's main job was link/text
+                                      color, not fills. Old --copper
+                                      (#8C4B2F) and new --accent (#8A4E35)
+                                      are nearly identical in light mode, so
+                                      this alias is a color no-op today and
+                                      only starts to matter once dark mode
+                                      ships. NOTE: the new system wants
+                                      copper used RARELY (2% of a page at
+                                      most — one tile, one word, one badge),
+                                      but old --copper is used broadly for
+                                      every link and button on the site.
+                                      That conflict is NOT resolved by this
+                                      alias — it just keeps things visually
+                                      working today. Real reconciliation is
+                                      component-session work.)
+       --line     -> --hairline     (both are the subtle 1px divider color)
+     --ink and --muted keep their v1.0 names — the new system uses the same
+     two names, just new values, so no alias was needed for them. */
+  --crema: var(--surface-2);
+  --paper: var(--surface-card);
+  --espresso: var(--ink);
+  --copper: var(--accent-text);
+  --line: var(--hairline);
 
   /* Type */
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Fraunces Variable', Georgia, serif; /* page H1 only */
+  --font-body: 'Manrope Variable', -apple-system, BlinkMacSystemFont, sans-serif; /* everything else */
 
+  /* Fluid type scale. --step--1/1/2 are unchanged from v1.0 (the new spec
+     keeps the same ranges); --step-0/3/4 are widened per section 6 (step-3
+     is now sized for H2, step-4 for the page H1). Same clamp() authoring
+     pattern as before, recomputed for a ~400px-to-1280px fluid range. */
   --step--1: clamp(0.875rem, 0.83rem + 0.2vw, 0.9375rem);
-  --step-0: clamp(1.0625rem, 1rem + 0.28vw, 1.125rem);
+  --step-0: clamp(1.0625rem, 0.98rem + 0.34vw, 1.25rem);
   --step-1: clamp(1.33rem, 1.22rem + 0.5vw, 1.5rem);
   --step-2: clamp(1.66rem, 1.48rem + 0.85vw, 2rem);
-  --step-3: clamp(2.1rem, 1.8rem + 1.4vw, 2.8rem);
-  --step-4: clamp(2.6rem, 2.1rem + 2.3vw, 4rem);
+  --step-3: clamp(2.1rem, 1.46rem + 2.55vw, 3.5rem); /* H2 */
+  --step-4: clamp(2.9rem, 1.72rem + 4.73vw, 5.5rem); /* page H1 */
 
-  /* Spacing: powers of a 4px base */
+  /* Spacing: unchanged from v1.0 — the new spec keeps the same scale and
+     token names (--space-1 through --space-10). */
   --space-1: 0.25rem; /* 4px */
   --space-2: 0.5rem; /* 8px */
   --space-3: 0.75rem; /* 12px */
@@ -36,7 +112,81 @@
   --space-9: 6rem; /* 96px */
   --space-10: 8rem; /* 128px */
 
-  /* Layout */
+  /* Shape: the new radius scale from section 6, added for later (shape)
+     sessions to use. --radius is kept at its OLD value (2px) and NOT
+     migrated to the new scale this session — that's a visible shape
+     change, out of scope for "colors and fonts only." */
+  --radius-sm: 8px;
+  --radius-md: 20px; /* callouts */
+  --radius-lg: 28px; /* tiles, cards, photo spaces */
+  --radius-xl: 36px; /* newsletter card */
+  --radius-pill: 999px; /* buttons, chips, the email field */
+  --radius: 2px; /* v1.0 value, unchanged this session — see note above */
+
+  /* Layout: unchanged from v1.0. */
   --measure: 68ch;
-  --radius: 2px;
+}
+
+[data-theme='dark'] {
+  /* Post-session: the original dark surface/tile values below were all
+     packed into roughly the bottom 13% of the lightness range (surface-1
+     #1a120e through tile-sand #3a2c22), with adjacent-step contrast
+     ratios of ~1.01–1.09:1 — confirmed numerically, not just by eye: at
+     that compression, WCAG contrast math (which is what "looks distinct"
+     ultimately has to clear) barely registers a difference, which is
+     exactly why the Fundamentals (tile-sand) and Gear (roast) tiles read
+     as blending into the Start Here band behind them. Also found two
+     tokens that were functionally duplicates: tile-sand (#3a2c22) and
+     tile-dark (#3a2b21) differed by one unit in two channels — no visual
+     role of "sand" distinct from "dark placeholder fill" at all.
+
+     Rebuilt with real, verified-wider gaps, reasoning about two different
+     kinds of token here rather than one flat ladder:
+     - The generic surface ladder (surface-1/2/3/card, tile-dark) now
+       spans roughly 10–25% lightness instead of 10–20%, same warm-brown
+       hue family (~24–25°), each step's own adjacent-pair contrast ratio
+       checked individually (1.18–1.30:1 — at or above light mode's own
+       internal steps of 1.14–1.32:1, computed the same way, for a fair
+       comparison).
+     - roast and tile-sand are PILLAR IDENTITY colors (Gear, Fundamentals),
+       not middle rungs of that ladder — light mode already treats them
+       this way (roast very dark, sand very light, opposite ends of the
+       range), so this just restores that same relationship in dark mode:
+       roast pushed down near tile-black's territory, tile-sand pushed up
+       well past surface-card. tile-sand vs. the Start Here band it
+       actually sits on went from ~1.01:1 to 2.49:1; roast vs. the same
+       band went from ~1.02:1 to 1.29:1 — smaller than tile-sand's jump
+       because roast sits at the dark end, where contrast-ratio math
+       compresses regardless of hue — but still a genuine, confirmed
+       improvement, not a rounding difference.
+
+     Every existing text-on-surface pairing in real use on the site
+     (--ink/--muted/--olive-text/--accent-text on each surface,
+     --ink-on-dark/--muted-on-dark/--olive-on-dark/--accent-on-dark on
+     each always-dark block, and the Fundamentals tile's own
+     --tile-sand-ink text on the new --tile-sand) was recomputed against
+     these new values before committing to them — all still clear 4.5:1
+     (large text 3:1), several with real margin, not reused by assumption
+     just because the old ones happened to pass. */
+  --surface-1: #231810;
+  --surface-2: #35271d;
+  --surface-3: #453124;
+  --surface-card: #523c2d;
+  --ink: #f3eadf;
+  --muted: #bbac9d;
+  --hairline: #33261e;
+  --hairline-strong: #3e2f26;
+  --border: #55443a;
+  --accent-text: #e3ad84;
+  --button-bg: #f3eadf;
+  --button-fg: #1b1410;
+  --olive-text: #a9b47f;
+  --accent-tint: rgba(227, 173, 132, 0.16);
+  --tile-sand: #845e33;
+  --tile-sand-ink: #f3eadf;
+  --tile-dark: #2e2017;
+  --tile-black: #140d08;
+  --roast: #1c110b;
+  --footer: #0f0905;
+  --shadow-lift: 0 24px 48px rgba(0, 0, 0, 0.5);
 }

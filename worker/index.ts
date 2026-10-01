@@ -89,33 +89,54 @@ function buildLangCookie(value: 'en' | 'es'): string {
   return `${LANG_COOKIE_NAME}=${value}; max-age=${LANG_COOKIE_MAX_AGE}; path=/; SameSite=Lax`;
 }
 
+// `href` below comes from a query param on a public URL, so it has to be
+// constrained to a same-site relative path before it's ever used as a
+// redirect Location — a single leading slash, not "//" (some browsers
+// treat a path starting with "//" as protocol-relative, i.e. an open
+// redirect to whatever host follows it).
+function isSafeRelativePath(path: string): boolean {
+  return path.startsWith('/') && !path.startsWith('//');
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const { pathname } = url;
 
-    // Persistent language switcher (Footer.astro) — a plain link to the
-    // current page with ?setlang=en|es appended, so this needs no client
-    // JS at all. Answers the escape-hatch gap the first-visit prompt alone
-    // left: once cuerpo_lang=es is set, there was no way back to English
-    // short of clearing cookies, since the "/" redirect below would just
-    // send a visitor straight back to /es/articles.
-    // This redirects to the clean URL (query stripped) rather than
-    // fetching-and-patching the response in place, specifically so the
-    // BROWSER's next request already carries the new cookie value — if we
-    // instead served the target content directly in this same response,
-    // the "/" redirect check below would still see the OLD cookie (Set-
-    // Cookie on a response doesn't retroactively change the request that's
-    // already being handled) and could immediately redirect the visitor
-    // right back to where they just asked to leave.
-    const setLang = url.searchParams.get('setlang');
-    if (setLang === 'en' || setLang === 'es') {
-      url.searchParams.delete('setlang');
+    // Persistent language switcher (Footer.astro): its own dedicated path
+    // (/set-language?to=en|es&href=<destination>) rather than appending
+    // ?setlang= to whatever page you're already on. That's the fix for a
+    // real cost, not a style preference — see wrangler.jsonc's
+    // run_worker_first comment: because the old version could point at any
+    // page on the site, run_worker_first had to be `true` for every single
+    // request just so this one link would keep working, when the
+    // vast majority of requests (every article, image, font) never needed
+    // the Worker at all. A dedicated path has no matching static asset, so
+    // it reaches the Worker on its own — run_worker_first can go back to
+    // a short explicit list instead.
+    // `href` is the page to return to after setting the cookie — normally
+    // the same otherLangHref value Footer.astro already computes (the
+    // current page's translated equivalent, or the site-wide default) —
+    // passed through here rather than recomputed, since the Worker has no
+    // access to Astro's content collections to look it up itself.
+    // Redirects (doesn't serve the destination directly in this same
+    // response) for the same reason as before: the browser's NEXT request
+    // needs to already carry the new cookie, since a Set-Cookie header
+    // doesn't retroactively change the request currently being handled —
+    // serving the destination in place here would leave the "/" redirect
+    // check below still seeing the OLD cookie on this same request.
+    if (pathname === '/set-language') {
+      const to = url.searchParams.get('to');
+      if (to !== 'en' && to !== 'es') {
+        return new Response('Bad Request: to must be "en" or "es"', { status: 400 });
+      }
+      const href = url.searchParams.get('href');
+      const destination = href && isSafeRelativePath(href) ? href : to === 'es' ? '/es/articles' : '/';
       return new Response(null, {
         status: 302,
         headers: {
-          Location: url.toString(),
-          'Set-Cookie': buildLangCookie(setLang),
+          Location: destination,
+          'Set-Cookie': buildLangCookie(to),
         },
       });
     }

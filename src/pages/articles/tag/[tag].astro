@@ -1,0 +1,62 @@
+---
+// Static tag pages, session 4 — same structure as
+// src/pages/articles/category/[category].astro, one page per tag actually
+// used by a published article (not the top-16-cap from getTagCounts, which
+// is just for the Explore page's cloud — a tag used on only one article
+// still deserves a working page if something links to it).
+import Base from '../../../layouts/Base.astro';
+import ArticleCard from '../../../components/ArticleCard.astro';
+import { getPublishedArticles, getArticlesIndexHref } from '../../../lib/articles';
+
+export async function getStaticPaths() {
+  const articles = await getPublishedArticles('en');
+  const tags = new Set<string>();
+  for (const article of articles) {
+    for (const tag of article.data.tags) tags.add(tag);
+  }
+  return [...tags].map((tag) => ({
+    params: { tag },
+    props: {
+      articles: articles.filter((a) => a.data.tags.includes(tag)),
+    },
+  }));
+}
+
+const { tag } = Astro.params;
+const { articles } = Astro.props;
+---
+
+<Base title={`${tag} — Articles`} description={`Cuerpo Coffee articles tagged ${tag}.`}>
+  <section class="container tag-page">
+    <header class="tag-page__header">
+      <p class="tag-page__eyebrow"><a href={getArticlesIndexHref('en')}>All articles</a></p>
+      <h1>#{tag}</h1>
+    </header>
+
+    <div class="tag-page__list">
+      {articles.map((article) => <ArticleCard article={article} />)}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .tag-page {
+    padding-block: var(--space-8);
+    max-width: 56rem;
+    margin-inline: auto;
+  }
+
+  .tag-page__header {
+    margin-bottom: var(--space-6);
+  }
+
+  .tag-page__eyebrow {
+    margin-bottom: var(--space-3);
+  }
+
+  .tag-page__eyebrow a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: var(--step--1);
+  }
+</style>

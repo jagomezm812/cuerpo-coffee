@@ -1,27 +1,40 @@
 @import './tokens.css';
 
+/*
+  v1.1 redesign: self-hosted variable fonts, replacing the old static
+  Fraunces-600 + Inter-400/500 setup. One file each covers the whole
+  weight range instead of shipping a separate file per weight — Manrope
+  200-900 in one 24.8 KB file, Fraunces 100-900 (plus the opsz axis) in one
+  67.3 KB file. Sourced from @fontsource-variable's published woff2 files
+  (not a project dependency — copied out and the packages removed; see
+  CLAUDE.md/CHANGELOG for how). Fraunces uses the "standard" style variant
+  (WONK and SOFT axes off), matching "optical sizing on, WONK off" in
+  section 6 of docs/TECHNICAL-PLAN.md.
+*/
 @font-face {
-  font-family: 'Fraunces';
+  font-family: 'Fraunces Variable';
   font-style: normal;
-  font-weight: 600;
+  font-weight: 100 900;
   font-display: swap;
-  src: url('/fonts/fraunces-600.woff2') format('woff2');
+  src: url('/fonts/fraunces-variable.woff2') format('woff2-variations');
 }
 
 @font-face {
-  font-family: 'Inter';
+  font-family: 'Manrope Variable';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 200 800;
   font-display: swap;
-  src: url('/fonts/inter-400.woff2') format('woff2');
+  src: url('/fonts/manrope-variable.woff2') format('woff2-variations');
 }
 
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/inter-500.woff2') format('woff2');
+/*
+  v1.1 session 5, Motion: page-to-page transitions via the CSS
+  cross-document View Transitions API — no JavaScript, per instruction.
+  Browsers that don't support it (yet) just navigate normally; there's no
+  polyfill and none is needed since navigation already worked before this.
+*/
+@view-transition {
+  navigation: auto;
 }
 
 *,
@@ -38,6 +51,10 @@ html {
   color-scheme: light;
 }
 
+html[data-theme='dark'] {
+  color-scheme: dark;
+}
+
 body {
   background: var(--crema);
   color: var(--ink);
@@ -48,23 +65,148 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+  v1.1 session 5, Motion: "theme change: colors fade over 350ms" —
+  docs/DESIGN-SYSTEM.md. :where(*) matches everything but contributes zero
+  specificity, so this is a low-priority fallback: any element with its own
+  more-specific `transition` (cards, buttons, chips — already listed below)
+  simply overrides it for that element, rather than this rule fighting
+  those for the same property. Every other element (body, header, footer,
+  bands, surfaces, text) gets the color fade with no per-file bookkeeping.
+*/
+:where(*) {
+  transition:
+    background-color 350ms ease,
+    color 350ms ease,
+    border-color 350ms ease;
+}
+
+/*
+  Page-entrance rise (docs/DESIGN-SYSTEM.md: "hero and title blocks rise
+  18px over 700ms, staggered by 80ms, once per load"). Applied directly to
+  each page's opening block (Home's hero card, Article/Reflection's title
+  block, Explore's header) — see those files. `--delay-1` staggers a
+  secondary element within the same block (e.g. a block's own action
+  buttons) by 80ms, per the spec's stagger.
+
+  `--delay-2`/`--delay-3` (added when this was extended to grid/list
+  content — Home's Start here tiles and Latest rows, Explore's topic
+  tiles) continue the same 80ms step. Callers cap the step index at 3
+  (240ms) regardless of how many items are in the list — the point of a
+  stagger is a quick ripple, not a queue; a 6-item list staggered a full
+  80ms each would take almost a second to finish settling on every single
+  page load, which stops feeling like "entrance polish" and starts feeling
+  like the page is slow. Capping at 3 keeps the same 80ms rhythm for the
+  first few items and lets the rest settle together.
+
+  The `to` state is `transform: none`, not `transform: translateY(0)` —
+  those look visually identical but are not the same authored value, and
+  a static (non-animated) `transform: none` doesn't trigger a new
+  stacking context the way any other transform value does. Changed while
+  chasing a real bug: the Explore page's search dropdown was rendering
+  behind the topic tiles below it, and .explore-header (an ancestor of
+  the dropdown) carries `rise-in`.
+  **Honest limitation, checked rather than assumed away:** this change on
+  its own did NOT fix that bug. Measured directly, before and after: with
+  `animation-fill-mode: both` holding the animation's end state forever,
+  `getComputedStyle(.explore-header).transform` reports
+  `matrix(1,0,0,1,0,0)` either way — `none` vs `translateY(0)` as the
+  keyframe's authored endpoint made no difference to what the browser
+  reports once a fill-mode-held CSS animation is involved, unlike a plain
+  static style. Kept anyway, since it's still a real, harmless
+  correctness improvement (the *intent* — "no transform" — is now stated
+  accurately) and may matter for other engines/scenarios even though it
+  wasn't the fix here. The actual fix for the dropdown bug is a
+  deliberate, explicit z-index promotion on `.explore-header` itself —
+  see that comment in src/pages/articles/index.astro for what was
+  actually verified to work, and by which method.
+*/
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise-in {
+  animation: rise-in 700ms ease-out both;
+}
+
+.rise-in--delay-1 {
+  animation-delay: 80ms;
+}
+
+.rise-in--delay-2 {
+  animation-delay: 160ms;
+}
+
+.rise-in--delay-3 {
+  animation-delay: 240ms;
+}
+
+/*
+  Photo-space settle (docs/DESIGN-SYSTEM.md: "photo spaces settle from
+  scale 1.05 over 1.4s"). Only for actual photo/image elements — never
+  applied to a card that also carries overlaid text (that would zoom the
+  text too), which is why Home's hero-card (text over a color fill) doesn't
+  use this even though it visually reads as a photo space.
+
+  Same change as .rise-in above, for consistency: `to` is `transform:
+  none`, not `transform: scale(1)` — same honest caveat applies (see that
+  comment): this alone isn't confirmed to prevent the animation-fill-mode
+  stacking-context effect, just a correctness improvement kept because it
+  doesn't cost anything.
+*/
+@keyframes photo-settle {
+  from {
+    transform: scale(1.05);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.photo-settle {
+  animation: photo-settle 1.4s ease-out both;
+  overflow: hidden;
+}
+
 img,
 picture {
   max-width: 100%;
   display: block;
 }
 
-h1,
-h2,
-h3 {
+/* v1.1: Fraunces is the page H1 only (docs/DESIGN-SYSTEM.md). h2/h3 move
+   to Manrope — weight and letter-spacing per section 6 of
+   docs/TECHNICAL-PLAN.md ("H2 600 ... with letter-spacing -0.035em").
+   Sizes are unchanged this session: h2 still uses --step-2 and h3 still
+   uses --step-1, not the new --step-3 (H2) size from the type table —
+   resizing headings site-wide is a visible layout change, deferred to a
+   later session. h1 keeps using --step-4, whose own range widened as part
+   of adopting the new token values, so it will render larger than before
+   even though nothing about which token it uses has changed. */
+h1 {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 400;
+  font-optical-sizing: auto;
   line-height: 1.15;
+  letter-spacing: -0.025em;
   color: var(--ink);
+  font-size: var(--step-4);
 }
 
-h1 {
-  font-size: var(--step-4);
+h2,
+h3 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: var(--ink);
 }
 
 h2 {
@@ -87,7 +229,12 @@ a:hover {
 a:focus-visible,
 button:focus-visible,
 input:focus-visible {
-  outline: 2px solid var(--copper);
+  /* docs/DESIGN-SYSTEM.md, Accessibility: "every control has a visible
+     focus ring in the ink color" — this is an explicit accessibility
+     rule, not a link-color preference, so unlike the broader --copper
+     question (see CLAUDE.md's Progress notes), it's fixed everywhere,
+     not scoped to just the header/footer this session. */
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -104,16 +251,231 @@ input {
 }
 
 /*
+  v1.1: the small uppercase label that sits above a section heading (Start
+  here, Series, Newsletter, Latest) — docs/DESIGN-SYSTEM.md's "section
+  labels" rule (olive, 12px/700/uppercase, 0.14em tracking). Unscoped so
+  index.astro, SeriesBand.astro and ReflectionStrip.astro can all share one
+  definition instead of repeating it. Footer.astro's own `.site-footer__heading`
+  is a deliberate local override, not this class — see the comment there for
+  why (it has no bigger heading below it and must function as one itself).
+*/
+.section-label {
+  font-size: var(--step--1);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--olive-text);
+  margin-bottom: var(--space-3);
+}
+
+/*
+  Pillar colors (docs/DESIGN-SYSTEM.md: "pillar colors teach readers where
+  they are without a legend") — one shared definition of the six
+  background/foreground pairs, as custom properties, so every component
+  that needs pillar coloring (PillarTile's bento tiles, an article's small
+  category pill) reads the same --pillar-bg/--pillar-fg pair instead of
+  each re-declaring six background rules of its own. Apply the matching
+  `pillar--<category>` class alongside a component's own class.
+*/
+.pillar--troubleshooting {
+  --pillar-bg: var(--olive);
+  --pillar-fg: var(--ink-on-dark);
+}
+
+.pillar--fundamentals {
+  --pillar-bg: var(--tile-sand);
+  --pillar-fg: var(--tile-sand-ink);
+}
+
+.pillar--gear {
+  --pillar-bg: var(--roast);
+  --pillar-fg: var(--ink-on-dark);
+}
+
+.pillar--methods {
+  --pillar-bg: var(--surface-card);
+  --pillar-fg: var(--ink);
+  border: 1px solid var(--hairline);
+}
+
+.pillar--sourcing {
+  --pillar-bg: var(--accent);
+  --pillar-fg: var(--ink-on-dark);
+}
+
+.pillar--reflection {
+  --pillar-bg: var(--tile-black);
+  --pillar-fg: var(--ink-on-dark);
+}
+
+/*
+  The small pillar-colored category pill — an article's own category label
+  (Article.astro/ReflectionArticle.astro's title block) and, since this
+  session, the search dropdown's per-result category label. Moved here
+  from Article.astro's own scoped <style> once a second consumer needed
+  it: ReflectionArticle.astro was already applying this exact class
+  without ever defining it (its category pill has been rendering
+  completely unstyled since session 5 — caught and fixed as part of this
+  move, not a separate fix), and the search dropdown's results are raw
+  HTML injected via innerHTML, which can't reach a scoped <style> at all
+  (see the .search block below for why that matters here specifically).
+*/
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--pillar-bg);
+  color: var(--pillar-fg);
+  font-size: var(--step--1);
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-4);
+}
+
+/*
+  Buttons component (docs/DESIGN-SYSTEM.md): pill-shaped, 52px, Manrope
+  600. Every button is neutral — never filled with olive or copper. Moved
+  here from Home's index.astro in session 5 once Explore and ReflectionStrip
+  needed the exact same classes too (the "extract when a second thing needs
+  it" move already made once for .section-label and the pillar--* colors).
+  Motion: hover lifts 1px over 200ms, press scales to .98 — docs/
+  DESIGN-SYSTEM.md's Motion section, explicit for buttons and chips (cards
+  get their own, different 4px-lift treatment, declared per component).
+*/
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  padding-inline: var(--space-6);
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  font-size: var(--step--1);
+  text-decoration: none;
+  transition:
+    transform 200ms ease,
+    background-color 350ms ease,
+    color 350ms ease,
+    border-color 350ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn--primary {
+  background: var(--button-bg);
+  color: var(--button-fg);
+  border: 1px solid var(--button-bg);
+}
+
+/* Real bug, not a style tweak: the sitewide `a:hover { color: var(
+   --espresso) }` rule a few lines up is a single element + pseudo-class
+   selector, which beats a single class like `.btn--primary` on
+   specificity (0,1,1 vs 0,1,0) — so hovering any <a class="btn ...">
+   silently fell through to that link-hover color instead of keeping the
+   button's own. Invisible on .btn--outline and .chip purely by
+   coincidence (their own rest color already equals --espresso/--ink —
+   the override lands on the same value), but real and visible on
+   .btn--primary (button-fg) and .btn--outline-on-dark (ink-on-dark),
+   whose rest colors are different: in light mode this turned "Start
+   here" and "Read the latest" (on Home's always-dark hero card) and
+   "Read the essay" (ReflectionStrip, also always-dark) black on
+   hover/active, unreadable against the dark background behind them.
+   Fixed by re-asserting each variant's own color at two-class
+   specificity (0,2,0), which reliably beats the single-class-plus-
+   pseudo rule regardless of source order. */
+.btn--primary:hover,
+.btn--primary:active {
+  color: var(--button-fg);
+}
+
+.btn--outline-on-dark {
+  background: transparent;
+  color: var(--ink-on-dark);
+  border: 1px solid var(--ink-on-dark);
+}
+
+.btn--outline-on-dark:hover,
+.btn--outline-on-dark:active {
+  color: var(--ink-on-dark);
+}
+
+.btn--outline {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+
+.btn--outline:hover {
+  border-color: var(--ink);
+}
+
+/* Topic/tag chips: neutral, outlined filter links (Buttons component:
+   "chips for filters"), not the olive "category pills" rule (a plain-text
+   label, declared per component where it's used). Same motion as buttons,
+   at the chip's own 44px height. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-size: var(--step--1);
+  font-weight: 600;
+  text-transform: capitalize;
+  text-decoration: none;
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    background-color 350ms ease,
+    color 350ms ease;
+}
+
+.chip:hover {
+  border-color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.chip:active {
+  transform: scale(0.98);
+}
+
+/*
   Email capture: unscoped (not in EmailCapture.astro's own <style>) because
   the mid-article placement is raw HTML injected by a remark plugin
   (src/lib/remark-inline-subscribe.mjs) into the Markdown AST, not an Astro
   component instance — it needs the exact same classes to render identically.
+
+  Restyled to match the Home newsletter band's card look (rounded surface-
+  card, pill input/button, neutral button-bg) — previously this used the
+  v1.0 token aliases (--paper/--line/--copper, and --radius at its
+  unmigrated 2px) untouched since session 1, which is why it read as
+  visually older/sharper than the newsletter band once that band got its
+  own restyle in session 3. Sized for sitting inside an article's narrower
+  column (max-width unchanged at 40rem) rather than the newsletter band's
+  full-width card — the newsletter band's own override below now only
+  needs to add its extra padding, everything else is shared from here.
+  Affects all three places this class renders (mid-article, end-of-article,
+  and the standalone /subscribe page) — they already shared this exact
+  style before this change, just an older one; restyling only one of the
+  three would have left the other two visually inconsistent with it on the
+  very same article page.
 */
 .email-capture {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: var(--space-7) var(--space-5);
+  background: var(--surface-card);
+  border: none;
+  border-radius: var(--radius-xl);
+  padding: var(--space-7) var(--space-6);
   text-align: center;
   max-width: 40rem;
   margin-inline: auto;
@@ -121,7 +483,7 @@ input {
 
 .email-capture h2 {
   font-size: var(--step-1);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
 .email-capture > p {
@@ -139,26 +501,34 @@ input {
 .email-capture__form input {
   flex: 1 1 16rem;
   padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--crema);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
   color: var(--ink);
 }
 
 .email-capture__form button {
   padding: var(--space-3) var(--space-5);
-  border: 1px solid var(--copper);
-  border-radius: var(--radius);
-  background: var(--copper);
-  color: var(--paper);
-  font-weight: 500;
+  border: 1px solid var(--button-bg);
+  border-radius: var(--radius-pill);
+  background: var(--button-bg);
+  color: var(--button-fg);
+  font-weight: 600;
   cursor: pointer;
-  transition: background 150ms ease;
+  transition:
+    transform 200ms ease,
+    background-color 350ms ease,
+    border-color 350ms ease;
 }
 
 .email-capture__form button:hover {
-  background: var(--espresso);
-  border-color: var(--espresso);
+  background: var(--button-bg);
+  border-color: var(--button-bg);
+  transform: translateY(-1px);
+}
+
+.email-capture__form button:active {
+  transform: scale(0.98);
 }
 
 .email-capture__form button:disabled {
@@ -181,8 +551,21 @@ input {
 }
 
 /*
-  Language prompt: unscoped because it's rendered by a React island
-  (LanguagePrompt.tsx), which has no access to Astro's scoped <style> blocks.
+  Site-wide z-index scale — the complete list, so a future addition can
+  pick a value that means something relative to what's already here
+  instead of guessing. Three real values exist today, low to high:
+    30  .search__results (the Explore page's search dropdown, below) —
+        ordinary page content, but needs to sit above whatever's below
+        it, since it's position: absolute and can visually extend past
+        its own section into the next one
+    60  ReadingProgress.astro's fixed top bar (article pages only)
+    100 .language-prompt below — a global, modal-like first-visit prompt;
+        deliberately the highest, since it should never be covered by an
+        ordinary page element
+  None of these currently appear on the same page at once in practice
+  (the reading-progress bar is article-only, the search dropdown is
+  Explore-only), so this ordering is about staying coherent for whenever
+  that changes, not fixing an active conflict between them.
 */
 .language-prompt {
   position: fixed;
@@ -265,5 +648,195 @@ input {
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-3);
+  }
+}
+
+/*
+  v1.1 session 5: the Reflection essay's one in-essay photo space —
+  unscoped for the same reason as .email-capture above: it's raw HTML
+  injected into the markdown AST by remark-inline-reflection-photo.mjs, not
+  rendered by an Astro component, so no component's scoped <style> can
+  reach it. Sits inside the essay's narrow prose column (unlike the
+  full-bleed hero, this one doesn't break out of it) — a flat tile-dark
+  fill, no fabricated imagery, same rule as every other placeholder here.
+*/
+.reflection-inline-photo {
+  /* Only margin-bottom — Prose's own `.prose > * + *` rule already gives
+     this block a margin-top (it's a normal sibling in the flow), so
+     adding a margin-block here would double up the top gap, the same
+     stacked-padding bug class flagged in CLAUDE.md's session 3/4 fixes. */
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-lg);
+  background: var(--tile-dark);
+  margin-bottom: var(--space-6);
+}
+
+/*
+  Search dropdown (SearchBox.astro) — unscoped for the same class of
+  reason as .email-capture/.reflection-inline-photo above, but a different
+  root cause worth spelling out since it's not markdown-injected HTML this
+  time: these result rows are built as plain strings by SearchBox.astro's
+  own client script and inserted via `results.innerHTML =` at runtime.
+  Astro's scoped <style> only ever reaches elements the compiler itself
+  saw and stamped with a data-astro-cid-* attribute — anything built by
+  client JS after the page has already rendered never gets that attribute,
+  so scoped selectors for these classes would silently never match. This
+  was shipped once that way (see SearchBox.astro's own comment) and looked
+  fine in every structural/DOM check, because the elements and class names
+  were all genuinely there — it just rendered as unstyled, run-together
+  text with default link/mark colors, a purely visual failure that only
+  actually looking at the rendered page caught.
+
+  .search/.search__input/.search__results themselves are static markup
+  Astro does compile, so they'd have worked scoped — kept here anyway, one
+  file for the whole component, rather than splitting its CSS across two
+  places depending on which specific element happens to be dynamic today.
+*/
+.search {
+  position: relative;
+  max-width: 28rem;
+}
+
+.search__input {
+  width: 100%;
+  height: 52px;
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-card);
+  color: var(--ink);
+  font-size: var(--step--1);
+}
+
+.search__input::placeholder {
+  color: var(--muted);
+}
+
+/* Shape/space/depth (docs/DESIGN-SYSTEM.md): "shadow only on hover-lift
+   and the search dropdown, never at rest" — this is the one other place
+   besides a card's hover state that a shadow is allowed at all. Motion:
+   "dropdowns fade in over 300ms" — opacity-only, driven by the
+   .is-visible class the wiring script toggles once results exist.
+
+   Post-session-6 fix, z-index 20 -> 30: the real bug wasn't actually a
+   too-low z-index here — see the .rise-in keyframe comment near the top
+   of this file for the actual root cause (an ancestor of this dropdown
+   was accidentally becoming a permanent stacking context, trapping
+   whatever z-index this had). Still bumped to a real, documented value
+   as part of the fix (see the z-index scale comment above
+   .language-prompt, earlier in this file) rather than leaving the old
+   placeholder 20. */
+.search__results {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 24rem;
+  overflow-y: auto;
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lift);
+  padding: var(--space-2);
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.search__results.is-visible {
+  opacity: 1;
+}
+
+/* One clean row per article: a hairline between rows (none on the last),
+   the category pill, the title, then the excerpt — matching the Explore
+   board's own clean-result-row pattern in docs/DESIGN-SYSTEM.md. Hover and
+   the keyboard-highlighted state (aria-selected, set by the script as the
+   visitor presses arrow keys) share the same treatment. */
+.search__result {
+  display: block;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: background-color 200ms ease;
+}
+
+.search__result:last-child {
+  border-bottom: none;
+}
+
+.search__result:hover,
+.search__result[aria-selected='true'] {
+  background: var(--surface-2);
+}
+
+/* The shared .category-pill is sized for an article's title block
+   (margin-bottom: --space-4, meant to sit above an h1) — too much space
+   in a compact result row, so it's tightened here. Higher specificity
+   than the bare .category-pill rule (two selectors vs. one), so this
+   reliably wins regardless of which rule the compiler lists first. */
+.search__result .category-pill {
+  margin-bottom: var(--space-2);
+}
+
+.search__result-title {
+  color: var(--ink);
+  font-weight: 700;
+  font-size: var(--step--1);
+  margin-bottom: var(--space-1);
+}
+
+/* Pagefind's own excerpt is already a short, relevant snippet around the
+   match (not the whole matched passage) — this line-clamp is a visual
+   backstop for the rare longer excerpt, not what does the truncating. */
+.search__result-excerpt {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+.search__result-excerpt mark {
+  background: var(--accent-tint);
+  color: var(--accent-text);
+}
+
+.search__empty {
+  padding: var(--space-3) var(--space-4);
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+/*
+  v1.1 session 5, Motion: "everything switches off under
+  prefers-reduced-motion" — with no exceptions, per instruction. Rather
+  than trust every current and future per-component
+  `@media (prefers-reduced-motion: reduce) { transition: none }` rule to
+  cover every case (easy to miss one — this codebase already has several,
+  kept as harmless redundancy), this is the actual guarantee: the
+  well-established, `!important`-backed pattern that collapses every
+  transition and animation on the page to effectively nothing, regardless
+  of which rule declared it or how specific that rule was. `!important` is
+  used deliberately here, the one place in this codebase it is — this is
+  exactly the kind of cross-cutting accessibility override it exists for,
+  not a specificity shortcut. Verified empirically (not just asserted): a
+  headless real-Chrome check (puppeteer-core driving the existing local
+  Chrome install, --no-save, removed after) loaded the homepage twice —
+  once normally, once with prefers-reduced-motion emulated via
+  Emulation.setEmulatedMedia — and read computed styles back. Normal:
+  hero animation-duration 0.7s, .btn/body transition-duration
+  0.2s–0.35s. Emulated: every one of those collapsed uniformly to 1e-05s
+  (0.01ms). See CLAUDE.md's session 5 notes for the full result.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

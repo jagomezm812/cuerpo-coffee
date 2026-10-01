@@ -5,7 +5,7 @@
 
 A quiet, editorial, high-ticket look for a home-coffee publication: warm neutrals, olive as a quiet section accent with a small copper spark, generous space, soft geometry, and photography that is obviously the author's own.
 
-**This is a template, not a mood board.** Every page is assembled from a small set of section types in a fixed rhythm. New articles and new sections can be added or removed every day without losing the concept, as long as the invariants below hold. Read `guidelines/10-page-template.md` before adding or removing any section.
+**This is a template, not a mood board.** Every page is assembled from a small set of section types in a fixed rhythm. New articles and new sections can be added or removed every day without losing the concept, as long as the invariants below hold. Read the "Page template and section rules" section below before adding or removing any section — that's this same document, not a separate file (an earlier version of this doc pointed at a `guidelines/10-page-template.md` that was never actually created; the content it would have held already lives inline here).
 
 ## The concept: five invariants
 
@@ -36,7 +36,7 @@ Every button is neutral: `button-bg` on `button-fg`, which inverts in dark mode.
 Olive identifies a section. Use it for:
 
 - Section labels: the small uppercase words above a heading ("Start here", "Series", "Newsletter", "Written by") and category names.
-- Section markers: the numbered rings in a series list, the leaf ornament and rule that close an article, the pull-quote rule, the table-of-contents and series progress markers, the reading-progress line.
+- Section markers: the numbered rings in a series list, the pull-quote rule, the table-of-contents and series progress markers, the reading-progress line. (A leaf ornament closing out an article was part of the original concept but was never actually built — no component or style for it exists anywhere in the codebase. Either build it properly in a future session or drop it from this list; don't leave it implied as already live.)
 - The Troubleshooting topic tile and the category pills.
 - On always-dark blocks, section labels in the light olive (`olive-on-dark`).
 
@@ -44,7 +44,9 @@ Never: buttons of any kind, page or band backgrounds, cards other than the Troub
 
 ### Copper: the warm spark
 
-Copper is small and rare: the Sourcing tile, the italic word in the Home hero ("with body."), and the "New" badge. If it shows up more than once or twice on a screen, remove some.
+Copper is small and rare: the Sourcing tile, the italic word in the Home hero ("with body."), the "New" badge, and the matched-word highlight in the search dropdown's results. If it shows up more than once or twice on a screen, remove some.
+
+(A handful of pre-redesign surfaces still use the old, wider copper footprint — the sitewide default link color, the language-preference prompt's "Español" button, `ArticleCard`'s hover state on the not-yet-rebuilt category/tag pages and the Spanish article tree, and `Prose`'s default blockquote border. These are known, tracked leftovers from before this color system was tightened, not new copper being added — see `CLAUDE.md`'s Progress notes for which ones are deliberately in scope for a future session versus deliberately left alone.)
 
 ## Typography
 
@@ -54,9 +56,9 @@ Copper is small and rare: the Sourcing tile, the italic word in the Home hero ("
 
 ## Shape, space, depth
 
-- Radius: 28px for tiles and cards, 36px for the newsletter card, 20px for callouts, pill for buttons, chips and the email field.
+- Radius: 28px for tiles and cards, 36px for the newsletter card, 20px for compact embedded UI (the search dropdown is the one real user of this today — a standalone content callout like a pull-quote or a closing sign-off reads as a card in its own right and uses the 28px card radius instead, not the 20px value), pill for buttons, chips and the email field.
 - No gradients. Shadow only on hover-lift and the search dropdown, never at rest. Hairlines are 1px.
-- Container: 1200px of content with 120px page margins at 1440px wide. Hero and photo cards inset 24px from the edges (1392px wide).
+- Container: 1152px of content (72rem — the actual built value; this doc previously said 1200px, which was never what shipped). Hero and photo cards inset 24px from the edges.
 - Tiles sit on a 3-column grid with 24px gaps.
 
 ## Motion
@@ -65,7 +67,7 @@ Simple and quiet. There is no motion token family, so these are the rules:
 
 - Theme change: colors fade over 350ms.
 - Cards lift 4px on hover (280ms) and the arrow nudges 4px; buttons lift 1px (200ms) and press to scale .98.
-- Page entrance: hero and title blocks rise 18px over 700ms, staggered by 80ms, once per load.
+- Page entrance: hero and title blocks rise 18px over 700ms, staggered by 80ms, once per load. The same rise also staggers grid/list content (Home's Start here tiles and Latest rows, Explore's topic tiles) at the same 80ms step, capped at a 240ms maximum delay regardless of list length — a long list shouldn't take the better part of a second to finish settling on every single page load.
 - Photo spaces settle from scale 1.05 over 1.4s. Dropdowns fade in over 300ms.
 - Everything switches off under `prefers-reduced-motion`.
 - Page to page: CSS cross-document view transitions (`@view-transition { navigation: auto; }`), no JavaScript.
@@ -87,7 +89,7 @@ Text is at least 4.5:1 in both themes (large text 3:1). Every control has a visi
 
 ## Anatomy: the order is fixed
 
-1. **Header** on `surface-1`: wordmark, four links, search, dark-mode toggle, Subscribe.
+1. **Header** on `surface-1`: wordmark, four links, search, dark-mode toggle, Subscribe. (Only two of the four links exist today — Articles and About; Start here and Series wait on their own pages. Search is a round icon button that links out to the real search field on Explore, not an inline bar in the header itself — see the Search component entry below.)
 2. **Opening**: the hero photo card on Home; the title block on articles and Explore.
 3. **Content bands**, alternating `surface-1`, `surface-2` and `surface-3`.
 4. **Reflection strip** (optional, Home only), on `roast`.
@@ -106,7 +108,7 @@ Text is at least 4.5:1 in both themes (large text 3:1). Every control has a visi
 | Topic tiles | Six tiles, 3 by 2 | `surface-2` |
 | Tag cloud | Top 16 tags | `surface-1` |
 | Reading body | Table of contents, 680px column, series rail | `surface-1` |
-| Author box | Photo, name, two-sentence bio | `surface-2` card on band |
+| Author box | Photo, name, title | `surface-2` card on band |
 | Keep reading | Three related tiles | `surface-1` |
 | Reflection strip | Featured essay, photo space 2 | `roast` |
 | Newsletter band | Email capture | `surface-2` (Home) or `surface-3` (articles) |
@@ -165,7 +167,7 @@ The page rhythm as full-width color bands: header, opening, alternating content 
 
 - Adjacent bands never share a color (the header and opening share white on purpose).
 - The footer is the darkest band and always last; the newsletter band always sits directly above it.
-- When you add or remove a band, re-alternate its neighbors. See `guidelines/10-page-template.md`.
+- When you add or remove a band, re-alternate its neighbors. See "Removing a section" above.
 
 ## PhotoSpace
 
@@ -174,6 +176,15 @@ The large rounded photo card. A page holds two at most, never in adjacent bands;
 - Original photography only, with alt text or a caption. A short loop must be muted, 6 seconds at most, with a poster image, and stay still under reduced motion or data-saver.
 - It stays dark in both themes. On load the image settles from scale 1.05 over 1.4s.
 - The badge is a design-time marker and is not shown on the site.
+
+## Search
+
+Free-text search over articles (Pagefind, built at deploy time), on the Explore page only — not a sitewide inline expandable bar in the header itself. A round icon button in the header links out to it (`/articles?focus=search`, which focuses the real field on load); on phones it's a labeled row in the hamburger drawer instead of a fourth header icon.
+
+- Pagefind's own runtime loads lazily, on the first focus or keystroke — never on page load.
+- Each result is one row per matching article, never per word occurrence: a pillar-colored category pill (the same `.category-pill`/`pillar--<category>` classes an article's own title block uses), the real title, and one line-clamped excerpt with just the match highlighted in copper.
+- Capped at 5 visible results. Keyboard nav follows the standard combobox pattern: arrow keys move the highlight, Enter opens the highlighted (or top) result, Escape closes.
+- The dropdown is the one other place besides card hover-lift that a shadow is allowed at rest — see Shape, space, depth above.
 
 ---
 

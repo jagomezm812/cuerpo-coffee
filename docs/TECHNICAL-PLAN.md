@@ -3,11 +3,11 @@
 **A build specification written to be handed to Claude Code.**
 Save this in the repo as `docs/TECHNICAL-PLAN.md`. Section 13 contains the `CLAUDE.md` to place at the repo root.
 
-> **Version 1.1, design amendment (September 2026).** The owner approved a redesign that overrides parts of sections 6, 7, 8, 10 and 13: a light and dark theme, rounded cards, a sans-serif type system with a serif for page titles only, a section accent color (olive), simple CSS transitions, search, and richer article pages. The redesign's source of truth is the **Cuerpo Coffee Design System** (saved as `docs/DESIGN-SYSTEM.md` in the repo). Where this file and the design system disagree on look, the design system wins.
+> **Version 1.1, design amendment — now built, not just approved (last checked 2026-09-30).** The redesign this note originally just *announced* has since actually been built, across six sessions, entirely on a branch named `redesign` — not yet merged into `main`, not yet live. It overrides parts of sections 6, 7, 8, 10 and 13: a light and dark theme, rounded cards, a sans-serif type system with a serif for page titles only, a section accent color (olive), simple CSS transitions, search, and richer article pages. The redesign's source of truth is the **Cuerpo Coffee Design System** (saved as `docs/DESIGN-SYSTEM.md` in the repo). Where this file and the design system disagree on look, the design system wins. For exactly what's been built, session by session, with the reasoning and the honest limitations behind each decision, read **`CLAUDE.md`'s Progress section** — that file, not this one, is the live record of current state; this document is the original spec plus this amendment note, kept for historical context.
 >
-> **Still to refresh (not yet amended):** section 3 (the site is deployed as a Cloudflare Worker with static assets, not classic Pages, and Kit's free plan no longer includes automations), sections 9 and 11 (phases and deployment), and the additions built since v1.0: Keystatic with a GitHub OAuth App and Worker routes under `/api/`, English and Spanish routing (`/es/`), and the React integration.
+> **Still stale here, not yet amended into the sections below (read `CLAUDE.md` for the real current versions instead):** section 3 (Stack — the site is deployed as a Cloudflare Worker with static assets, not classic Pages; Kit's free plan no longer includes automations), section 4 (Repository structure — doesn't mention `worker/index.ts`, `wrangler.jsonc`, the `/es/` route tree, `src/lib/`, the `series`/`author` collections, or any component or page added since v1.0), section 5 below (Content model — the schema shown is missing `lang`, `translationKey`, `series`, `seriesOrder`, and the `'reflection'` category; see `src/content.config.ts` for the real current one), and sections 9 and 11 (phases and deployment).
 >
-> **Open item:** the first-visit language prompt is a ~70 KB React island. Confirm it hydrates on idle and only for first-time visitors, or replace it with a lighter script, so the 20 KB JavaScript budget on article pages holds.
+> **Resolved, not open anymore:** the first-visit language prompt's ~70 KB React cost (this note used to ask someone to "confirm it hydrates on idle... so the 20 KB budget holds") was measured directly, disclosed to the owner, and deliberately accepted as a one-off, named exception to the 20 KB article-page budget — specifically to exercise the React/TypeScript infrastructure end-to-end on a real public page, not because the feature itself needed React. It was never going to "hold" the budget as originally hoped; the budget note in section 8 below should be read with that exception in mind.
 
 ---
 
@@ -99,7 +99,19 @@ cuerpo-coffee/
 
 ## 5. Content model
 
-`src/content/config.ts` defines one collection, `articles`, with this schema:
+**Stale — kept for historical shape only; see `src/content.config.ts` for the
+real, current schema and `CLAUDE.md`'s Progress notes for why each field
+below was added.** The file itself also moved: Astro 7's content-collection
+config must live at `src/content.config.ts`, not `src/content/config.ts` as
+this section originally said.
+
+There are now three collections, not one: `articles` (below), `series`
+(a name and description only — an ordered group of articles, added for the
+"Beginner Basics" series), and `author` (`name`, `title`, `avatar` — the
+one site-wide byline every article and the About page's sign-off both pull
+from, edited as a Keystatic singleton rather than per-article).
+
+`articles`' real current schema, as of the v1.1 redesign:
 
 ```ts
 {
@@ -107,19 +119,27 @@ cuerpo-coffee/
   description: string,        // 120–155 chars, meta description + card excerpt
   publishDate: date,
   updatedDate: date | undefined,
-  category: 'troubleshooting' | 'fundamentals' | 'gear' | 'methods' | 'sourcing',
+  category: 'troubleshooting' | 'fundamentals' | 'gear' | 'methods' | 'sourcing' | 'reflection',
   tags: string[],             // default []
   heroImage: image | undefined,
   heroAlt: string | undefined,   // required when heroImage is present
   draft: boolean,             // default false; drafts excluded from build
   featured: boolean           // default false; max one featured on homepage
+  lang: 'en' | 'es',          // default 'en'
+  translationKey: reference to another article | undefined, // set only on a non-English entry: the English article it translates
+  series: reference to a series entry | undefined,           // must be set together with seriesOrder, or neither
+  seriesOrder: number | undefined,
 }
 ```
+
+`'reflection'` was added to `category` for the essay-style section of the
+v1.1 redesign; `lang`/`translationKey` for the English/Spanish routing
+built after v1.0; `series`/`seriesOrder` for the series data model.
 
 Rules:
 - Filename is the slug. Lowercase, hyphenated, no dates in the filename.
 - `draft: true` articles must be excluded from the production build, the article index, RSS, and the sitemap.
-- The build must **fail loudly** on a schema violation rather than silently skipping an article.
+- The build must **fail loudly** on a schema violation rather than silently skipping an article — `heroAlt`-requires-`heroImage` and `series`-requires-`seriesOrder` (and vice versa) are both enforced this way.
 
 ---
 

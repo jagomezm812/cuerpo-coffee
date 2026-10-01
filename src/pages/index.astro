@@ -1,116 +1,418 @@
 ---
-import { Image } from 'astro:assets';
+// v1.1 redesign, session 3: Home page. Built from docs/DESIGN-SYSTEM.md's
+// section types, in the fixed order the page template specifies. Every
+// section with nothing to show is hidden entirely (Reflection, until a real
+// essay is published) rather than rendered empty — same pattern used
+// throughout this codebase (untranslated articles, empty category pages).
+// Series was in that same "built but hidden" state through session 3; as
+// of session 4 there's a real series (see src/lib/series.ts), so it now
+// renders for real. English only, per this session's scope — site chrome
+// (and now Home) stays English-only until the i18n work revisits chrome.
 import Base from '../layouts/Base.astro';
-import ArticleCard from '../components/ArticleCard.astro';
+import PillarTile from '../components/PillarTile.astro';
+import SeriesBand from '../components/SeriesBand.astro';
+import ReflectionStrip from '../components/ReflectionStrip.astro';
 import EmailCapture from '../components/EmailCapture.astro';
-import { getPublishedArticles } from '../lib/articles';
+import { Image } from 'astro:assets';
+import homeHero from '../assets/home/home-hero.jpg';
+import {
+  getPublishedArticles,
+  getArticleHref,
+  getCategoryHref,
+} from '../lib/articles';
+import { getSeriesGroups } from '../lib/series';
 
 const allArticles = await getPublishedArticles('en');
 
-const featured = allArticles.find((a) => a.data.featured) ?? allArticles[0];
-const recent = allArticles.filter((a) => a.id !== featured?.id).slice(0, 6);
+const troubleshooting = allArticles.filter((a) => a.data.category === 'troubleshooting');
+const fundamentals = allArticles.filter((a) => a.data.category === 'fundamentals');
+const gear = allArticles.filter((a) => a.data.category === 'gear');
+const reflection = allArticles.find((a) => a.data.category === 'reflection');
+
+// Session 4: real series data (src/lib/series.ts). Capped at 2 here (the
+// component's own default) — Explore shows all of them. A series card
+// links to its first article — there's no dedicated series-detail page
+// (out of scope so far), so "click to start reading it" is the real
+// behavior today.
+const seriesGroups = await getSeriesGroups('en');
+const series = seriesGroups.map((group) => ({
+  title: group.series.data.title,
+  description: group.series.data.description,
+  href: getArticleHref(group.articles[0]),
+  articleCount: group.articles.length,
+}));
+
+const latest = allArticles.slice(0, 6);
+
+// Chips link to all six categories — every one of them now has a real,
+// generated static page (src/pages/articles/category/[category].astro's
+// CATEGORIES list includes "reflection" as of session 3).
+const chipCategories = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing', 'reflection'] as const;
+
+const NEW_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+const buildTime = Date.now();
+function isNew(publishDate: Date): boolean {
+  return buildTime - publishDate.getTime() < NEW_WINDOW_MS;
+}
+function formatDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+}
+
+// Session 6: staggered entrance rise for the Start here tiles and Latest
+// rows, same 80ms step as the hero's own rise-in/--delay-1. Capped at
+// --delay-3 (240ms) regardless of list length — see global.css's comment
+// on .rise-in--delay-3 for why.
+function riseInClass(index: number): string {
+  const step = Math.min(index, 3);
+  return step > 0 ? `rise-in rise-in--delay-${step}` : 'rise-in';
+}
 ---
 
 <Base
   title="Cuerpo Coffee"
   description="A coffee publication that teaches beginners to make good coffee at home, one clear, unhurried article at a time."
 >
-  <section class="hero container">
-    <h1>Cuerpo Coffee</h1>
-    <p class="hero__tagline">Make good coffee at home. No gear obsession, no jargon.</p>
+  <section class="hero-band">
+    <div class="hero-wrap">
+      <div class="hero-card rise-in">
+        <Image
+          src={homeHero}
+          alt="Freshly roasted coffee beans held in cupped hands above a roaster."
+          class="hero-card__photo photo-settle"
+          widths={[480, 768, 1200, 1600]}
+          sizes="(min-width: 90rem) 1392px, 100vw"
+          format="avif"
+        />
+        <div class="hero-card__scrim" aria-hidden="true"></div>
+        <div class="hero-card__content">
+          <p class="hero-card__label">Home coffee, done properly</p>
+          <h1 class="hero-card__title">Coffee <em>with body.</em></h1>
+          <p class="hero-card__description">
+            Clear, unhurried articles that teach you to make genuinely good coffee at home — no gear
+            obsession, no jargon.
+          </p>
+          <div class="hero-card__actions rise-in rise-in--delay-1">
+            <a href="#start-here" class="btn btn--primary">Start here</a>
+            <a href="/articles" class="btn btn--outline-on-dark">Read the latest</a>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
-  {
-    featured && (
-      <section class="container featured">
-        {featured.data.heroImage && (
-          <a href={`/articles/${featured.id}`}>
-            <Image
-              src={featured.data.heroImage}
-              alt={featured.data.heroAlt ?? ''}
-              class="featured__image"
-              widths={[480, 768, 1200]}
-              sizes="(min-width: 72rem) 72rem, 100vw"
-              format="avif"
-            />
-          </a>
-        )}
-        <p class="featured__category">{featured.data.category}</p>
-        <h2>
-          <a href={`/articles/${featured.id}`}>{featured.data.title}</a>
-        </h2>
-        <p class="featured__description">{featured.data.description}</p>
-      </section>
-    )
-  }
-
-  <section class="container recent">
-    {recent.map((article) => <ArticleCard article={article} />)}
+  <section id="start-here" class="start-here-band">
+    <div class="container">
+      <p class="section-label">Start here</p>
+      <h2>The beginner ladder</h2>
+      <div class="start-here__tiles">
+        <PillarTile
+          pillar="troubleshooting"
+          title={troubleshooting[0]?.data.title ?? 'Troubleshooting'}
+          description={troubleshooting[0]?.data.description ?? 'Fix the cup you already have.'}
+          href={troubleshooting[0] ? getArticleHref(troubleshooting[0]) : undefined}
+          class={riseInClass(0)}
+        />
+        <PillarTile
+          pillar="fundamentals"
+          title="Fundamentals"
+          description="The few things that actually matter."
+          href={fundamentals.length ? getCategoryHref('en', 'fundamentals') : undefined}
+          class={riseInClass(1)}
+        />
+        <PillarTile
+          pillar="gear"
+          title="Gear"
+          description="What's worth buying, and what isn't."
+          href={gear.length ? getCategoryHref('en', 'gear') : undefined}
+          class={riseInClass(2)}
+        />
+      </div>
+    </div>
   </section>
 
-  <section class="container capture-section">
-    <EmailCapture />
+  <section class="latest-band">
+    <div class="container">
+      <div class="latest__header">
+        <div>
+          <p class="section-label">Latest</p>
+          <h2>New from Cuerpo Coffee</h2>
+        </div>
+      </div>
+      <nav aria-label="Browse by topic" class="latest__chips">
+        {chipCategories.map((c) => <a href={getCategoryHref('en', c)} class="chip">{c}</a>)}
+      </nav>
+      <div class="latest__list">
+        {
+          latest.map((article, index) => (
+            <article class={`latest-card ${riseInClass(index)}`}>
+              <p class="latest-card__meta">
+                <span class="latest-card__category">{article.data.category}</span>
+                <span aria-hidden="true">·</span>
+                <time datetime={article.data.publishDate.toISOString()}>
+                  {formatDate(article.data.publishDate)}
+                </time>
+                {isNew(article.data.publishDate) && <span class="latest-card__badge">New</span>}
+              </p>
+              <h3>
+                <a href={getArticleHref(article)}>{article.data.title}</a>
+              </h3>
+              <p class="latest-card__description">{article.data.description}</p>
+            </article>
+          ))
+        }
+      </div>
+      <div class="latest__footer">
+        <a href="/articles" class="btn btn--outline">View all articles</a>
+      </div>
+    </div>
+  </section>
+
+  <SeriesBand series={series} />
+
+  {reflection && <ReflectionStrip article={reflection} />}
+
+  <section class="newsletter-band">
+    <div class="container newsletter-band__inner">
+      <EmailCapture />
+    </div>
   </section>
 </Base>
 
 <style>
-  .hero {
-    padding-block: var(--space-10) var(--space-8);
-    text-align: center;
+  /* Hero: photo space 1. The card itself doubles as the photo space (a flat
+     dark placeholder fill, no stock imagery) with the hero text overlaid in
+     the *-on-dark tokens, inset from the band's edges by --space-5 (24px),
+     per docs/DESIGN-SYSTEM.md's "hero and photo cards inset 24px". Only a
+     top inset of --space-5 here — the header and this band share white on
+     purpose (docs/DESIGN-SYSTEM.md's SectionBands note), so the card should
+     sit close under the header, not behind a full section-sized gap. No
+     bottom padding at all: Start Here's own top padding (--space-9, below)
+     is the single source of the gap before it — giving this band its own
+     bottom padding too would stack the two into a double-sized gap, the
+     same bug already fixed once in the Latest section
+     (docs/CHANGELOG.md's "second round of post-session-2 fixes" entry). */
+  .hero-band {
+    background: var(--surface-1);
+    padding-top: var(--space-5);
   }
 
-  .hero h1 {
-    font-size: var(--step-4);
-  }
-
-  .hero__tagline {
-    margin-top: var(--space-4);
-    color: var(--espresso);
-    font-size: var(--step-1);
-  }
-
-  .featured {
-    padding-block: var(--space-6);
-    max-width: 56rem;
+  .hero-wrap {
+    max-width: 90rem;
     margin-inline: auto;
+    padding-inline: var(--space-5);
   }
 
-  .featured__image {
+  /* Photo space 1: the hero card's own real photograph, filling the card
+     edge to edge, with the text overlaid on top — replacing the flat
+     --tile-dark placeholder this session (see CLAUDE.md's Progress notes
+     on why the photo wasn't added sooner, and the temporary-stock-photo
+     flag in docs/BACKLOG.md). --tile-dark is kept as the card's own
+     background, now just a loading-state fallback underneath the photo,
+     not the visible fill. */
+  .hero-card {
+    position: relative;
+    overflow: hidden;
+    background: var(--tile-dark);
+    border-radius: var(--radius-lg);
+  }
+
+  .hero-card__photo {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    height: auto;
-    border-radius: var(--radius);
-    margin-bottom: var(--space-5);
+    height: 100%;
+    object-fit: cover;
   }
 
-  .featured__category {
-    color: var(--muted);
+  /* A flat, uniform dark overlay — not a gradient (docs/DESIGN-SYSTEM.md:
+     "No gradients", a blanket rule, not just an olive-specific one) — so
+     the *-on-dark text stays legible over a real, visually busy photo
+     instead of the flat placeholder color it used to sit on. Contrast
+     checked directly against the actual photo once built, not assumed
+     from picking a value that looked reasonable. */
+  .hero-card__scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(18, 12, 9, 0.55);
+  }
+
+  .hero-card__content {
+    position: relative;
+    z-index: 1;
+    padding: var(--space-10) var(--space-7);
+  }
+
+  .hero-card__label {
     font-size: var(--step--1);
-    text-transform: capitalize;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--olive-on-dark);
+    margin-bottom: var(--space-4);
+  }
+
+  .hero-card__title {
+    color: var(--ink-on-dark);
+    margin-bottom: var(--space-5);
+    max-width: 20ch;
+  }
+
+  /* The one allowed copper touch this page (docs/DESIGN-SYSTEM.md: "the
+     italic word in the Home hero"). --accent-on-dark is copper tuned for
+     contrast on a dark background, not the light-mode --accent fill. */
+  .hero-card__title em {
+    font-style: italic;
+    color: var(--accent-on-dark);
+  }
+
+  .hero-card__description {
+    color: var(--muted-on-dark);
+    font-size: var(--step-1);
+    max-width: var(--measure);
+    margin-bottom: var(--space-6);
+  }
+
+  .hero-card__actions {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  /* .btn (and .chip, below) moved to global.css in session 5 — Explore and
+     ReflectionStrip need the exact same classes, so they're defined once
+     there now, motion included. */
+
+  /* Start here: cream band, three bento tiles. */
+  .start-here-band {
+    background: var(--surface-2);
+    padding-block: var(--space-9);
+  }
+
+  .start-here__tiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5);
+    margin-top: var(--space-6);
+  }
+
+  /* Latest: white band, no featured/large treatment — every title here
+     renders at the same size and weight (h3, --step-1, matching the shared
+     global h2/h3 rule), the same fix already applied to the old homepage
+     structure. No wrapper padding-block on .latest__list: each card carries
+     its own consistent padding-block, so a wrapper padding here would stack
+     on top of the first card's, the exact spacing bug fixed once already —
+     see docs/CHANGELOG.md's "second round of post-session-2 fixes" entry. */
+  .latest-band {
+    background: var(--surface-1);
+    padding-block: var(--space-9);
+  }
+
+  .latest__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+  }
+
+  .latest__list {
+    max-width: 56rem;
+    margin-top: var(--space-6);
+  }
+
+  .latest-card {
+    padding-block: var(--space-6);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .latest-card:last-child {
+    border-bottom: none;
+  }
+
+  .latest-card__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step--1);
     margin-bottom: var(--space-2);
   }
 
-  .featured h2 a {
+  /* "Category names" are olive text, per docs/DESIGN-SYSTEM.md's Olive
+     section — not a filled pill (that's reserved for the Troubleshooting
+     tile and, sitewide, at most 4% of the page). */
+  .latest-card__category {
+    color: var(--olive-text);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .latest-card__meta time {
+    color: var(--muted);
+  }
+
+  /* The "New" badge: copper, and rare by construction — it only ever shows
+     on articles published in the last 14 days. */
+  .latest-card__badge {
+    margin-left: var(--space-1);
+    padding: 0.15em 0.6em;
+    border-radius: var(--radius-pill);
+    background: var(--accent-tint);
+    color: var(--accent-text);
+    font-size: 0.7em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .latest-card h3 {
+    margin-bottom: var(--space-2);
+  }
+
+  /* Neutral link treatment (ink + underline-on-hover), matching how the
+     header/footer's copper tension was already resolved — not copper, per
+     this session's "remove leftover old copper links from this page". */
+  .latest-card h3 a {
     color: var(--ink);
     text-decoration: none;
   }
 
-  .featured h2 a:hover {
-    color: var(--copper);
+  .latest-card h3 a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
   }
 
-  .featured__description {
-    color: var(--espresso);
-    margin-top: var(--space-3);
-    max-width: var(--measure);
+  .latest-card__description {
+    color: var(--muted);
   }
 
-  .recent {
-    max-width: 56rem;
-    margin-inline: auto;
-    padding-block: var(--space-6);
+  .latest__footer {
+    margin-top: var(--space-7);
+    text-align: center;
   }
 
-  .capture-section {
+  /* Newsletter band: the shared EmailCapture (global.css's base
+     .email-capture) now already carries the rounded-card/pill-field/
+     neutral-button look this band originally introduced in session 3 — as
+     of this session's mid-article restyle fix, the base style and this
+     band's look are the same card, just at two different sizes. The only
+     thing genuinely specific to this full-width band is more generous
+     padding than the narrower in-article version uses. */
+  .newsletter-band {
+    background: var(--surface-2);
     padding-block: var(--space-9);
+  }
+
+  .newsletter-band__inner :global(.email-capture) {
+    padding: var(--space-8) var(--space-6);
+  }
+
+  @media (max-width: 40rem) {
+    .start-here__tiles {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-card__content {
+      padding: var(--space-7) var(--space-5);
+    }
   }
 </style>

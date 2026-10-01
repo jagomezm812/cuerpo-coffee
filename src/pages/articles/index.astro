@@ -1,57 +1,191 @@
 ---
+// v1.1 redesign, session 4: the Explore page, rebuilt from
+// docs/DESIGN-SYSTEM.md's "Explore" board. Composed the way the design
+// system's page template calls for: a title block, then topic tiles, a tag
+// cloud, and the series list (all of them, unlike Home's two-card cap) —
+// no flat "every article" list anymore (Home's Latest, the category pages,
+// and the tag pages already cover that; Explore is a navigation/discovery
+// page, not a duplicate listing). Session 5 added free-text search
+// (SearchBox.astro, Pagefind) in the title block — categories and tags
+// stay static links, no client-side filtering of those.
 import Base from '../../layouts/Base.astro';
-import ArticleCard from '../../components/ArticleCard.astro';
-import { getPublishedArticles, getCategoryHref } from '../../lib/articles';
+import PillarTile from '../../components/PillarTile.astro';
+import SeriesBand from '../../components/SeriesBand.astro';
+import SearchBox from '../../components/SearchBox.astro';
+import { getPublishedArticles, getCategoryHref, getTagHref, getTagCounts, getArticleHref } from '../../lib/articles';
+import { getSeriesGroups } from '../../lib/series';
 
-const categories = ['troubleshooting', 'fundamentals', 'gear', 'methods', 'sourcing'] as const;
-const articles = await getPublishedArticles('en');
+const allArticles = await getPublishedArticles('en');
+
+const PILLARS = [
+  { category: 'troubleshooting' as const, title: 'Troubleshooting', description: 'Fix the cup you already have.' },
+  { category: 'fundamentals' as const, title: 'Fundamentals', description: 'The few things that actually matter.' },
+  { category: 'gear' as const, title: 'Gear', description: "What's worth buying, and what isn't." },
+  { category: 'methods' as const, title: 'Methods', description: 'Step-by-step ways to brew.' },
+  { category: 'sourcing' as const, title: 'Sourcing', description: 'Where good beans actually come from.' },
+  { category: 'reflection' as const, title: 'Reflection', description: 'Coffee as a daily ritual, not just a technique.' },
+];
+
+const topicTiles = PILLARS.map((p) => {
+  const count = allArticles.filter((a) => a.data.category === p.category).length;
+  return { ...p, href: count > 0 ? getCategoryHref('en', p.category) : undefined };
+});
+
+const tagCounts = await getTagCounts('en');
+
+// Session 6: same staggered entrance rise as Home's Start here tiles and
+// Latest rows — see src/pages/index.astro's riseInClass for the reasoning
+// (80ms step, capped at --delay-3 regardless of list length).
+function riseInClass(index: number): string {
+  const step = Math.min(index, 3);
+  return step > 0 ? `rise-in rise-in--delay-${step}` : 'rise-in';
+}
+
+const seriesGroups = await getSeriesGroups('en');
+const series = seriesGroups.map((group) => ({
+  title: group.series.data.title,
+  description: group.series.data.description,
+  href: getArticleHref(group.articles[0]),
+  articleCount: group.articles.length,
+}));
 ---
 
-<Base title="Articles" description="Every Cuerpo Coffee article, newest first.">
-  <section class="container articles-page">
-    <header class="articles-page__header">
-      <h1>Articles</h1>
-      <nav aria-label="Filter by category" class="articles-page__filters">
+<Base title="Articles" description="Explore every Cuerpo Coffee topic, series, and tag.">
+  <header class="explore-header rise-in">
+    <div class="container">
+      <p class="section-label">Explore</p>
+      <h1>Every way into Cuerpo Coffee</h1>
+      <p class="explore-header__standfirst">
+        Start with a topic, follow a series in order, or jump straight to a tag.
+      </p>
+      <div class="explore-header__search rise-in rise-in--delay-1">
+        <SearchBox />
+      </div>
+    </div>
+  </header>
+
+  <section class="topics-band">
+    <div class="container">
+      <p class="section-label">Topics</p>
+      <h2>Browse by topic</h2>
+      <div class="topics__grid">
         {
-          categories.map((category) => (
-            <a href={getCategoryHref('en', category)}>{category}</a>
+          topicTiles.map((tile, index) => (
+            <PillarTile
+              pillar={tile.category}
+              title={tile.title}
+              description={tile.description}
+              href={tile.href}
+              class={riseInClass(index)}
+            />
           ))
         }
-      </nav>
-    </header>
-
-    <div class="articles-page__list">
-      {articles.map((article) => <ArticleCard article={article} />)}
+      </div>
     </div>
   </section>
+
+  {
+    tagCounts.length > 0 && (
+      <section class="tags-band">
+        <div class="container">
+          <p class="section-label">Tags</p>
+          <h2>Tag cloud</h2>
+          <nav aria-label="Browse by tag" class="tags__cloud">
+            {tagCounts.map(({ tag }) => (
+              <a href={getTagHref('en', tag)} class="chip">
+                {tag}
+              </a>
+            ))}
+          </nav>
+        </div>
+      </section>
+    )
+  }
+
+  <SeriesBand series={series} limit={series.length} />
 </Base>
 
 <style>
-  .articles-page {
-    padding-block: var(--space-8);
-    max-width: 56rem;
-    margin-inline: auto;
+  /* position: relative + z-index here is the actual fix for the search
+     dropdown rendering behind .topics-band below it — not a style choice.
+     This header carries `rise-in` (the entrance-rise animation). A CSS
+     animation with `animation-fill-mode: both` keeps its effect on
+     `transform` applied indefinitely after it finishes, and
+     `getComputedStyle(.explore-header).transform` reports a non-`none`
+     matrix forever as a result — confirmed directly, not assumed. That
+     silently promotes this header to its own, unintentional stacking
+     context, which traps the search dropdown's own z-index inside it:
+     the dropdown's z-index could never win against .topics-band no
+     matter how high it was set, because it was never actually competing
+     against it at the same level. Giving this header its own
+     *intentional* z-index (same 30 as .search__results — see the
+     z-index scale comment in global.css above .language-prompt) makes
+     its whole subtree, dropdown included, win against .topics-band
+     directly, regardless of exactly how the animation's own accidental
+     context forms.
+     Verified properly, not by eyeballing a screenshot: a short (700px)
+     viewport's screenshot of this fix looked ambiguous at first glance —
+     a sliver of tile color was visible right at the dropdown's rounded
+     bottom corner and past the viewport's own cutoff edge, which reads a
+     lot like the original bug at a glance. What actually confirmed the
+     fix: `document.elementFromPoint()` sampled across the dropdown's
+     real interior returned the dropdown's own result rows, not a tile or
+     the band, at every point except the box's own rounded corners (where
+     that's simply correct rounded-corner rendering, not a stacking
+     issue); and a taller viewport's screenshot showed the entire
+     dropdown cleanly on top of the tiles with no ambiguity at all. Worth
+     remembering: a cropped screenshot of a tall floating panel can look
+     like a stacking bug even when the stacking is already correct —
+     confirm with either a full, untruncated view or a real hit-test, not
+     a screenshot that happens to cut through the panel. */
+  .explore-header {
+    position: relative;
+    z-index: 30;
+    background: var(--surface-1);
+    padding-block: var(--space-9) var(--space-8);
   }
 
-  .articles-page__header {
-    margin-bottom: var(--space-6);
+  .explore-header__standfirst {
+    color: var(--espresso);
+    font-size: var(--step-1);
+    margin-top: var(--space-4);
+    max-width: var(--measure);
   }
 
-  .articles-page__filters {
+  .explore-header__search {
+    margin-top: var(--space-6);
+  }
+
+  .topics-band {
+    background: var(--surface-2);
+    padding-block: var(--space-9);
+  }
+
+  .topics__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5);
+    margin-top: var(--space-6);
+  }
+
+  .tags-band {
+    background: var(--surface-1);
+    padding-block: var(--space-9);
+  }
+
+  .tags__cloud {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-4);
-    margin-top: var(--space-4);
+    gap: var(--space-3);
+    margin-top: var(--space-6);
   }
 
-  .articles-page__filters a {
-    text-transform: capitalize;
-    color: var(--muted);
-    text-decoration: none;
-    font-size: var(--step--1);
-  }
+  /* .chip moved to global.css in session 5 — Home needs the exact same
+     class. */
 
-  .articles-page__filters a:hover {
-    color: var(--copper);
+  @media (max-width: 40rem) {
+    .topics__grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

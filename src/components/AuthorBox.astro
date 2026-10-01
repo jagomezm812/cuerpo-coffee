@@ -1,0 +1,81 @@
+---
+// Author box: photo, name, title — pulled from the site-wide author
+// config (src/lib/author.ts), never invented per article.
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+export interface Props {
+  name: string;
+  title: string;
+  avatar?: ImageMetadata;
+}
+
+const { name, title, avatar } = Astro.props;
+---
+
+<div class="author-box">
+  {
+    avatar ? (
+      <Image src={avatar} alt={`${name} photo`} width={128} height={128} class="author-box__photo" />
+    ) : (
+      // Falls back to a flat placeholder only if the author config's
+      // avatar is ever unset — decorative, so aria-hidden rather than a
+      // fabricated alt, same reasoning as every other placeholder here.
+      <div class="author-box__photo author-box__photo--placeholder" aria-hidden="true" />
+    )
+  }
+  <div class="author-box__text">
+    <p class="author-box__label">Written by</p>
+    <p class="author-box__name">{name}</p>
+    <p class="author-box__title">{title}</p>
+  </div>
+</div>
+
+<style>
+  .author-box {
+    display: flex;
+    gap: var(--space-5);
+    align-items: flex-start;
+    padding: var(--space-6);
+    background: var(--surface-2);
+    border-radius: var(--radius-lg);
+  }
+
+  .author-box__photo {
+    flex-shrink: 0;
+    width: 4rem;
+    height: 4rem;
+    border-radius: var(--radius-pill);
+    object-fit: cover;
+  }
+
+  .author-box__photo--placeholder {
+    background: var(--tile-dark);
+  }
+
+  .author-box__label {
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--olive-text);
+    margin-bottom: var(--space-2);
+  }
+
+  .author-box__name {
+    font-weight: 700;
+    margin-bottom: var(--space-2);
+  }
+
+  .author-box__title {
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  @media (max-width: 32rem) {
+    .author-box {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>

@@ -1,0 +1,105 @@
+---
+// The Series band from docs/DESIGN-SYSTEM.md ("surface-3", up to two series
+// cards on Home, all of them on Explore — hence the optional `limit`).
+// Built in session 3 with no real data yet; session 4 adds the series
+// model (src/lib/series.ts) and wires this in on both Home and Explore.
+// Renders nothing when `series` is empty — the same "hidden when there's
+// nothing to show" mechanism used throughout this codebase, not a special
+// case for this one component.
+export interface Props {
+  series: Array<{
+    title: string;
+    description: string;
+    href: string;
+    articleCount: number;
+  }>;
+  limit?: number;
+}
+
+const { series, limit = 2 } = Astro.props;
+---
+
+{
+  series.length > 0 && (
+    <section class="series-band">
+      <div class="container series-band__inner">
+        <p class="section-label">Series</p>
+        <h2>Read in order</h2>
+        <div class="series-band__cards">
+          {series.slice(0, limit).map((s) => (
+            <a href={s.href} class="series-card">
+              <h3 class="series-card__title">{s.title}</h3>
+              <p class="series-card__description">{s.description}</p>
+              <span class="series-card__count">{s.articleCount} articles</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .series-band {
+    background: var(--surface-3);
+    padding-block: var(--space-9);
+  }
+
+  .series-band__cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-5);
+    margin-top: var(--space-6);
+  }
+
+  .series-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-6);
+    background: var(--surface-card);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: var(--ink);
+    transition:
+      transform 280ms ease,
+      box-shadow 280ms ease,
+      background-color 350ms ease,
+      color 350ms ease;
+  }
+
+  .series-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .series-card__title {
+    font-size: var(--step-1);
+  }
+
+  .series-card__description {
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  .series-card__count {
+    margin-top: auto;
+    color: var(--olive-text);
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  @media (max-width: 40rem) {
+    .series-band__cards {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .series-card {
+      transition: none;
+    }
+  }
+</style>

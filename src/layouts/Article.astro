@@ -1,20 +1,39 @@
 ---
+// v1.1 redesign, session 4: the full Article template from
+// docs/DESIGN-SYSTEM.md's "Article" board. Title block, hero photo space
+// (this page's one photo space), a reading-progress line, a sticky table
+// of contents built from the article's own h2 headings, the body, a series
+// rail (only if the article belongs to one), an author box, and "Keep
+// reading". The mid-article and end-of-article newsletter captures are
+// unchanged from before this session — same component, same placement.
+// Session 5: data-pagefind-body scopes Pagefind's index to this template's
+// actual written content (title block, hero, body) — data-pagefind-ignore
+// on the sidebar/capture/author/keep-reading sections keeps chrome-like
+// boilerplate (repeated on every page) out of search results and excerpts.
 import type { CollectionEntry } from 'astro:content';
+import type { ImageMetadata } from 'astro';
 import Base from './Base.astro';
 import Prose from '../components/Prose.astro';
-import ArticleCard from '../components/ArticleCard.astro';
 import EmailCapture from '../components/EmailCapture.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import SeriesRail from '../components/SeriesRail.astro';
+import AuthorBox from '../components/AuthorBox.astro';
+import ReadingProgress from '../components/ReadingProgress.astro';
 import { Image } from 'astro:assets';
-import { getTranslationHref } from '../lib/articles';
+import { getArticleHref, getTranslationHref } from '../lib/articles';
+import type { SeriesGroup } from '../lib/series';
 
 export interface Props {
   article: CollectionEntry<'articles'>;
   readingTimeMinutes: number;
   relatedArticles: CollectionEntry<'articles'>[];
+  headings: { depth: number; slug: string; text: string }[];
+  seriesGroup?: SeriesGroup;
+  author: { name: string; title: string; avatar?: ImageMetadata };
 }
 
-const { article, readingTimeMinutes, relatedArticles } = Astro.props;
-const { title, description, publishDate, updatedDate, heroImage, heroAlt, lang } = article.data;
+const { article, readingTimeMinutes, relatedArticles, headings, seriesGroup, author } = Astro.props;
+const { title, description, category, publishDate, updatedDate, heroImage, heroAlt, lang } = article.data;
 
 const formattedDate = publishDate.toLocaleDateString(lang === 'es' ? 'es' : 'en-US', {
   year: 'numeric',
@@ -24,6 +43,7 @@ const formattedDate = publishDate.toLocaleDateString(lang === 'es' ? 'es' : 'en-
 });
 
 const translationHref = await getTranslationHref(article);
+const h2Count = headings.filter((h) => h.depth === 2).length;
 ---
 
 <Base
@@ -33,11 +53,22 @@ const translationHref = await getTranslationHref(article);
   lang={lang}
   otherLangHref={translationHref}
 >
-  <article class="container article">
-    <header class="article__header">
+  <ReadingProgress />
+
+  <div class="article-band">
+  <article
+    class="container article"
+    data-reading-progress-target
+    data-pagefind-body
+    data-pagefind-meta={`category:${category}`}
+  >
+    <header class="article__header rise-in">
+      <p class={`category-pill pillar--${category}`}>{category}</p>
       <h1>{title}</h1>
       <p class="article__standfirst">{description}</p>
       <p class="article__meta">
+        <span>{author.name}</span>
+        <span aria-hidden="true">·</span>
         <time datetime={publishDate.toISOString()}>{formattedDate}</time>
         <span aria-hidden="true">·</span>
         <span>{readingTimeMinutes} min read</span>
@@ -52,41 +83,88 @@ const translationHref = await getTranslationHref(article);
       </p>
     </header>
 
+    {/* This page's one photo space. A flat placeholder when no heroImage is
+       set — no stock imagery — rather than skipping the space entirely, so
+       the title block's rhythm stays consistent whether or not a real photo
+       exists yet. */}
     {
-      heroImage && (
+      heroImage ? (
         <Image
           src={heroImage}
           alt={heroAlt ?? ''}
-          class="article__hero"
+          class="article__hero photo-settle"
           widths={[480, 768, 1200]}
           sizes="(min-width: 72rem) 72rem, 100vw"
           format="avif"
         />
+      ) : (
+        <div class="article__hero article__hero--placeholder photo-settle" aria-hidden="true" />
       )
     }
 
-    <Prose>
-      <slot />
-    </Prose>
+    <div class="article__layout">
+      {
+        (h2Count >= 2 || seriesGroup) && (
+          <aside class="article__sidebar" data-pagefind-ignore>
+            {h2Count >= 2 && <TableOfContents headings={headings} />}
+            {seriesGroup && <SeriesRail group={seriesGroup} currentId={article.id} />}
+          </aside>
+        )
+      }
 
-    <div class="article__capture">
-      <EmailCapture />
+      <div class="article__body">
+        <Prose>
+          <slot />
+        </Prose>
+
+        <div class="article__capture" data-pagefind-ignore>
+          <EmailCapture />
+        </div>
+
+        <div class="article__author" data-pagefind-ignore>
+          <AuthorBox name={author.name} title={author.title} avatar={author.avatar} />
+        </div>
+      </div>
     </div>
 
     {
       relatedArticles.length > 0 && (
-        <section class="article__related">
-          <h2>Related</h2>
-          {relatedArticles.map((related) => (
-            <ArticleCard article={related} />
-          ))}
+        <section class="article__keep-reading" data-pagefind-ignore>
+          <p class="section-label">Keep reading</p>
+          <h2>More from Cuerpo Coffee</h2>
+          <div class="keep-reading__grid">
+            {relatedArticles.map((related) => (
+              <a href={getArticleHref(related)} class="keep-reading__tile">
+                <span class="keep-reading__category">{related.data.category}</span>
+                <h3 class="keep-reading__title">{related.data.title}</h3>
+                <p class="keep-reading__description">{related.data.description}</p>
+                <span class="keep-reading__arrow" aria-hidden="true">
+                  →
+                </span>
+              </a>
+            ))}
+          </div>
         </section>
       )
     }
   </article>
+  </div>
 </Base>
 
 <style>
+  /* The reading body's own band — docs/DESIGN-SYSTEM.md lists both
+     "Reading body" and "Keep reading" as surface-1 (white) section types,
+     so the whole article page (title block through Keep reading) sits on
+     one white band, distinct from the cream/sand bands Home and Explore
+     use. Previously there was no explicit background here at all, so the
+     page just showed through to body's site-wide cream default — the bug
+     this fixes. A full-width wrapper (not .article itself, which is
+     width-constrained by .container) so the color reaches the viewport
+     edges the same way Home/Explore's bands do. */
+  .article-band {
+    background: var(--surface-1);
+  }
+
   .article {
     padding-block: var(--space-8);
   }
@@ -96,6 +174,9 @@ const translationHref = await getTranslationHref(article);
     margin-inline: auto;
     margin-bottom: var(--space-6);
   }
+
+  /* .category-pill moved to global.css — see its comment there for why
+     (ReflectionArticle.astro needed it too, and never had its own copy). */
 
   .article__standfirst {
     font-size: var(--step-1);
@@ -112,17 +193,140 @@ const translationHref = await getTranslationHref(article);
   .article__hero {
     width: 100%;
     height: auto;
-    border-radius: var(--radius);
-    margin-bottom: var(--space-6);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-8);
+  }
+
+  .article__hero--placeholder {
+    aspect-ratio: 16 / 9;
+    background: var(--tile-dark);
+  }
+
+  /* Body + sidebar. The sidebar only renders (see the h2Count/seriesGroup
+     check above) when there's an actual TOC or series rail to show — never
+     an empty column. Collapses to a single column on phones, where the
+     sidebar simply becomes a normal block above the body (no sticky
+     positioning at that width — see the media query below). */
+  .article__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 15rem;
+    gap: var(--space-8);
+    align-items: start;
+  }
+
+  .article__body {
+    min-width: 0;
+    grid-column: 1;
+  }
+
+  /* One sticky container around both TableOfContents and SeriesRail (see
+     TableOfContents.astro's comment for why this lives here and not on
+     .toc itself): they stack as ordinary block children inside it, so they
+     move together and never overlap. */
+  .article__sidebar {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: var(--space-6);
   }
 
   .article__capture {
     margin-top: var(--space-9);
   }
 
-  .article__related {
-    max-width: var(--measure);
+  .article__author {
+    margin-top: var(--space-8);
+  }
+
+  .article__keep-reading {
+    max-width: 64rem;
     margin-inline: auto;
-    margin-top: var(--space-9);
+    margin-top: var(--space-10);
+  }
+
+  .keep-reading__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-5);
+    margin-top: var(--space-6);
+  }
+
+  .keep-reading__tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-6);
+    background: var(--surface-2);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: var(--ink);
+    transition:
+      transform 280ms ease,
+      box-shadow 280ms ease,
+      background-color 350ms ease,
+      color 350ms ease;
+  }
+
+  .keep-reading__tile:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+
+  .keep-reading__tile:hover .keep-reading__arrow {
+    transform: translate(4px, -4px);
+  }
+
+  .keep-reading__category {
+    color: var(--olive-text);
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .keep-reading__description {
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
+  .keep-reading__arrow {
+    align-self: flex-end;
+    margin-top: auto;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+    transition: transform 200ms ease;
+  }
+
+  @media (max-width: 56rem) {
+    .article__layout {
+      grid-template-columns: 1fr;
+    }
+
+    .article__sidebar {
+      grid-column: 1;
+      grid-row: 1;
+      position: static;
+    }
+
+    .article__sidebar :global(.toc) {
+      max-width: var(--measure);
+      margin-inline: auto;
+      margin-bottom: var(--space-8);
+    }
+
+    .keep-reading__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .keep-reading__tile,
+    .keep-reading__arrow {
+      transition: none;
+    }
   }
 </style>

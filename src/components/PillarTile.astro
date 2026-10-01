@@ -1,0 +1,133 @@
+---
+// The typographic PillarTile from docs/DESIGN-SYSTEM.md: a pillar pill, a
+// title, a link and an arrow circle — no thumbnail. Color always follows
+// the pillar (Troubleshooting olive, Fundamentals sand, Gear roast, Methods
+// white-with-hairline, Sourcing copper, Reflection near-black); only the
+// first three are used by Home's "Start here" band this session, but the
+// full pillar map is built now so the same component can be reused for the
+// Explore page's topic tiles in a later session without changes here.
+export interface Props {
+  pillar: 'troubleshooting' | 'fundamentals' | 'gear' | 'methods' | 'sourcing' | 'reflection';
+  title: string;
+  description: string;
+  href?: string;
+  // Session 6: lets callers add entrance-motion classes (rise-in, etc.)
+  // straight onto the tile's own root element, so a grid of tiles can be
+  // staggered without an extra wrapping div per tile.
+  class?: string;
+}
+
+const PILLAR_LABELS: Record<Props['pillar'], string> = {
+  troubleshooting: 'Troubleshooting',
+  fundamentals: 'Fundamentals',
+  gear: 'Gear',
+  methods: 'Methods',
+  sourcing: 'Sourcing',
+  reflection: 'Reflection',
+};
+
+const { pillar, title, description, href, class: className } = Astro.props;
+const label = PILLAR_LABELS[pillar];
+const Tag = href ? 'a' : 'div';
+---
+
+<Tag
+  class={`pillar-tile pillar--${pillar}${href ? '' : ' pillar-tile--soon'}${className ? ` ${className}` : ''}`}
+  href={href}
+>
+  <span class="pillar-tile__label">{label}</span>
+  <h3 class="pillar-tile__title">{title}</h3>
+  <p class="pillar-tile__description">{description}</p>
+  {
+    href ? (
+      <span class="pillar-tile__arrow" aria-hidden="true">→</span>
+    ) : (
+      <span class="pillar-tile__soon">Coming soon</span>
+    )
+  }
+</Tag>
+
+<style>
+  .pillar-tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    min-height: 14rem;
+    /* --pillar-bg/--pillar-fg come from the shared `pillar--<category>`
+       utility class in global.css — one definition of the six pillar
+       colors, reused wherever pillar coloring is needed. */
+    background: var(--pillar-bg);
+    color: var(--pillar-fg);
+    transition:
+      transform 280ms ease,
+      box-shadow 280ms ease,
+      background-color 350ms ease,
+      color 350ms ease;
+  }
+
+  a.pillar-tile:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+
+  a.pillar-tile:hover .pillar-tile__arrow {
+    transform: translate(4px, -4px);
+  }
+
+  .pillar-tile__label {
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    /* 0.9, not a lighter value: computed against every pillar background,
+       not just the three Home uses — the Sourcing tile's --accent fill has
+       the least contrast headroom of the six (copper, mid-tone), and drops
+       below 4.5:1 at anything under ~0.85 opacity. 0.9 keeps a safe margin
+       (4.78:1) on that tile without look flatter on the others. */
+    opacity: 0.9;
+  }
+
+  .pillar-tile__title {
+    font-size: var(--step-1);
+    color: inherit;
+  }
+
+  .pillar-tile__description {
+    font-size: var(--step--1);
+    color: inherit;
+    opacity: 0.9;
+  }
+
+  .pillar-tile__arrow {
+    align-self: flex-end;
+    margin-top: auto;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid currentColor;
+    transition: transform 200ms ease;
+  }
+
+  .pillar-tile__soon {
+    align-self: flex-start;
+    margin-top: auto;
+    font-size: var(--step--1);
+    font-weight: 600;
+    /* Same reasoning as .pillar-tile__label above — 0.7 dropped the
+       Sourcing tile's "Coming soon" text to 3.57:1, below the 4.5:1
+       minimum for normal-size text. */
+    opacity: 0.9;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pillar-tile,
+    .pillar-tile__arrow {
+      transition: none;
+    }
+  }
+</style>

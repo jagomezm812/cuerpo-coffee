@@ -6,6 +6,8 @@ category: fundamentals
 tags: ["ratio", "fundamentals", "measuring"]
 draft: false
 featured: false
+series: beginner-basics
+seriesOrder: 1
 ---
 
 Most bad home coffee isn't a bean problem or a technique problem. It's a measuring problem — specifically, not measuring at all. If you're eyeballing scoops, your coffee strength changes every single day, and you have no way to fix it when it's off.

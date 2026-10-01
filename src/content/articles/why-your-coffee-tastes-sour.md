@@ -10,7 +10,7 @@ tags:
   - extraction
   - troubleshooting
   - beginner
-heroImage: heroImage.jpg
+heroImage: images/why-your-coffee-tastes-sour/heroImage.jpg
 heroAlt: Espresso pouring into a glass cup.
 draft: false
 featured: true

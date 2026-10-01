@@ -1,7 +1,10 @@
 ---
 import { render } from 'astro:content';
 import Article from '../../layouts/Article.astro';
+import ReflectionArticle from '../../layouts/ReflectionArticle.astro';
 import { getPublishedArticles } from '../../lib/articles';
+import { getSeriesGroupForArticle } from '../../lib/series';
+import { getAuthor } from '../../lib/author';
 
 export async function getStaticPaths() {
   const articles = await getPublishedArticles('en');
@@ -12,17 +15,49 @@ export async function getStaticPaths() {
 }
 
 const { article } = Astro.props;
-const { Content } = await render(article);
+const { Content, headings } = await render(article);
+const isReflection = article.data.category === 'reflection';
 
 const allArticles = await getPublishedArticles('en');
-const relatedArticles = allArticles
-  .filter((a) => a.id !== article.id && a.data.category === article.data.category)
-  .slice(0, 2);
-
+const author = await getAuthor();
 const wordCount = (article.body ?? '').trim().split(/\s+/).filter(Boolean).length;
 const readingTimeMinutes = Math.max(1, Math.round(wordCount / 200));
+// Reflection essays don't use a series rail (see ReflectionArticle.astro),
+// so there's no need to look one up for them.
+const seriesGroup = isReflection ? undefined : await getSeriesGroupForArticle(article);
 ---
 
-<Article article={article} readingTimeMinutes={readingTimeMinutes} relatedArticles={relatedArticles}>
-  <Content />
-</Article>
+{
+  isReflection ? (
+    // Reflection essays get "More reflections": other reflection essays
+    // only, no same-category-then-fallback logic — see
+    // ReflectionArticle.astro's own comment for why. Absent, not broken,
+    // when none exist yet (true today).
+    <ReflectionArticle
+      article={article}
+      readingTimeMinutes={readingTimeMinutes}
+      relatedEssays={allArticles.filter((a) => a.id !== article.id && a.data.category === 'reflection').slice(0, 3)}
+      author={author.data}
+    >
+      <Content />
+    </ReflectionArticle>
+  ) : (
+    // Every other category: unchanged from before this session. Prefer
+    // same-category articles ("Keep reading ... by category"), then fill
+    // any remaining slots with other recent articles — see CLAUDE.md's
+    // session 4 notes for why.
+    <Article
+      article={article}
+      readingTimeMinutes={readingTimeMinutes}
+      relatedArticles={[
+        ...allArticles.filter((a) => a.id !== article.id && a.data.category === article.data.category),
+        ...allArticles.filter((a) => a.id !== article.id && a.data.category !== article.data.category),
+      ].slice(0, 3)}
+      headings={headings}
+      seriesGroup={seriesGroup}
+      author={author.data}
+    >
+      <Content />
+    </Article>
+  )
+}

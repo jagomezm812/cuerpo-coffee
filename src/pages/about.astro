@@ -1,43 +1,330 @@
 ---
+// v1.1 redesign: the About page. Real content landed in a prior session;
+// this pass and the one before it are layout-only — the copy below is
+// byte-for-byte what shipped originally, not touched again here.
+//
+// Fixes this pass, all from owner review of the previous layout:
+// - The text/photo intro used a plain two-column grid (text | photo) with
+//   the body paragraphs as a separate block AFTER it — since the grid row
+//   sized to its tallest item (the photo, ~460px, far taller than the
+//   short title+standfirst), the body paragraphs couldn't start until
+//   that whole row finished, leaving a large dead gap under the
+//   standfirst. Fixed with a real CSS Grid row-span: the photo spans two
+//   rows (title+standfirst's row, then the body's row) instead of sharing
+//   a single row with just the title block — each row's own height is now
+//   driven only by what's actually in it (title+standfirst for row one,
+//   all the body copy for row two), and the spanning photo just borrows
+//   space that's already there across both, rather than dictating row
+//   one's height. See the .about__layout comment below for the mechanics.
+// - Standfirst: italic, body text size (was a large upright lead
+//   paragraph).
+// - Everything left-aligned, including the pull-quote and sign-off cards
+//   (previously centered).
+// - Sign-off: a real avatar circle beside the name/title, one row, not
+//   text-only.
+// - Hero crop: recentered so both shoulders show symmetrically (previous
+//   crop cut off one side) — see the .about__photo object-position
+//   comment for how this was actually measured, not guessed.
 import Base from '../layouts/Base.astro';
 import Prose from '../components/Prose.astro';
+import { Image } from 'astro:assets';
+import { getAuthor } from '../lib/author';
+import aboutHero from '../assets/author/about-hero.jpg';
+
+const author = await getAuthor();
 ---
 
 <Base
   title="About"
-  description="Why Cuerpo Coffee exists, who writes it, and what it's for: helping beginners make good coffee at home without the gear obsession."
+  description="Why Cuerpo Coffee exists and who writes it: two decades of paying attention to coffee, starting from a tree on a family plot of land."
 >
-  <article class="container about">
-    <h1>About</h1>
-    <Prose>
-      <p>
-        Cuerpo Coffee exists because most coffee writing is aimed at people who already
-        know what a refractometer is. This is for everyone else: the people who want a
-        genuinely good cup at home, without buying $2,000 of equipment or memorizing a
-        dozen brewing rituals first.
-      </p>
-      <p>
-        <!-- TODO (owner): replace with the real bio and a real photograph before launch. -->
-        I got into coffee the way most people do: badly, with a bad burr grinder and worse
-        water. Every article here comes from a mistake I made first, so you don't have to
-        make it too.
-      </p>
-      <p>
-        This publication teaches fundamentals over gear, and troubleshooting over trends.
-        If an article doesn't make your next cup better, it hasn't done its job.
-      </p>
-    </Prose>
-  </article>
+  <div class="about-band">
+    <div class="container about__layout rise-in">
+      <div class="about__title-block">
+        <h1>About</h1>
+        <p class="about__standfirst">
+          Fifteen years old, holding a red coffee cherry I didn't know the name for, on my
+          father's land. That's where this started.
+        </p>
+      </div>
+
+      <div class="about__photo-frame photo-settle">
+        <Image
+          src={aboutHero}
+          alt="Jorge Gomez, founder of Cuerpo Coffee"
+          class="about__photo"
+          widths={[320, 480, 640]}
+          sizes="(min-width: 40rem) 360px, 260px"
+          format="avif"
+        />
+      </div>
+
+      <div class="about__copy">
+        <Prose>
+          <p>
+            I've had a cup of coffee every day since I was fourteen. For most of those years,
+            that just meant drinking it. It took a coffee tree to make me actually pay
+            attention.
+          </p>
+          <p>
+            My father kept a piece of land outside the city — a small weekend house, and a
+            much bigger stretch of trees: guava, lemon, apple, berries, mango, orange,
+            potatoes, more flowers than I can name. A few coffee trees were mixed in among
+            them. I noticed the red cherries on the branches before I understood what they
+            were, and once I did, I couldn't leave it alone.
+          </p>
+          <p>
+            My father walked me through the process himself — picking, pulping, drying, the
+            parts most people never see because their coffee already arrives as a bag of
+            brown beans. I processed my own batch. Then I bought a small roaster and roasted
+            my first kilo. I was fifteen.
+          </p>
+
+          <div class="about__pullquote">
+            <p class="about__pullquote-text">
+              A ritual of drinking coffee, a meditation and a time with yourself.
+            </p>
+          </div>
+
+          <p>
+            That's not a story about becoming a professional. I didn't go work for a roaster,
+            and I don't have a certification to point to. What I have is closer to twenty
+            years of drinking coffee on purpose — comparing beans, changing variables,
+            noticing what actually moves a cup from fine to good.
+          </p>
+          <p>
+            Somewhere in there it stopped being about the caffeine. I built a small coffee
+            bar in my own house, bought a real espresso machine and the accessories that go
+            with it, and turned the first cup of the morning into something closer to a
+            ritual than a habit. I don't drink it to wake up anymore. I drink it to slow down
+            before the day asks anything of me.
+          </p>
+          <p>
+            That's the whole premise of this site. Not expertise handed down from a café job,
+            but two decades of paying attention, starting from a tree I couldn't identify at
+            fifteen. If you're standing where I was — curious, slightly obsessed, not sure
+            where to start — that's exactly who this is for.
+          </p>
+        </Prose>
+
+        <div class="about__signoff">
+          {
+            author.data.avatar && (
+              <Image
+                src={author.data.avatar}
+                alt={`${author.data.name} photo`}
+                width={96}
+                height={96}
+                class="about__signoff-photo"
+              />
+            )
+          }
+          <p class="about__signoff-text">
+            <span class="about__signoff-name">{author.data.name}</span> —{' '}
+            <span class="about__signoff-title">{author.data.title}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
 </Base>
 
 <style>
-  .about {
+  /* Same "reading body" white band Article.astro's own body sits on —
+     About is a reading page, not a section-banded one. */
+  .about-band {
+    background: var(--surface-1);
     padding-block: var(--space-8);
-    max-width: var(--measure);
-    margin-inline: auto;
   }
 
-  .about h1 {
+  /* Two rows, two columns: [title+standfirst | photo (spans both rows)]
+     then [body copy | nothing — the photo already occupies that cell].
+     Each row's own height comes only from its own non-spanning content
+     (title-block for row one, copy for row two) — the spanning photo just
+     fills whatever combined height those two rows already add up to,
+     rather than forcing row one to grow to fit it. That combined height
+     is always comfortably more than the photo's ~460px once real body
+     copy is in row two, which is what actually fixes the dead-gap bug:
+     the copy column now starts flowing immediately under the
+     title-block, not under the photo. */
+  .about__layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    grid-template-rows: auto 1fr;
+    column-gap: var(--space-7);
+  }
+
+  .about__title-block {
+    grid-column: 1;
+    grid-row: 1;
+    max-width: var(--measure);
     margin-bottom: var(--space-6);
+  }
+
+  .about__copy {
+    grid-column: 1;
+    grid-row: 2;
+    max-width: var(--measure);
+  }
+
+  .about__standfirst {
+    font-style: italic;
+    font-size: var(--step-0);
+    color: var(--espresso);
+    margin-top: var(--space-4);
+  }
+
+  /* The corner portrait: a fixed small photo, not a full-width hero space
+     — about-hero.jpg is a face-and-shoulders crop, the wrong shape for
+     the landscape treatment Article.astro's own hero uses. The 4:5 ratio
+     and radius live on this wrapping frame, not the <img> itself — Astro's
+     <Image> sets the img's HTML width/height attributes to the source
+     file's own natural size (1170x1278) since no explicit width/height
+     was requested, and confirmed directly (computed styles before/after)
+     that a browser resolves the img's rendered box from those attributes
+     ahead of a CSS `aspect-ratio` declared on that same element. A plain
+     wrapping div has no competing intrinsic size of its own, so the ratio
+     and clip apply the same way regardless of that interaction. */
+  .about__photo-frame {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  /* object-position, not the default center: measured directly against
+     the source file (1170x1278), not eyeballed. The subject isn't
+     centered in the raw frame — there's visibly more empty window/sky on
+     the right than plant/pillar on the left, so a plain center crop at
+     this narrower 4:5 ratio cut into one shoulder while leaving empty
+     background on the other. 38% horizontal keeps both shoulders roughly
+     symmetric in the cropped frame — confirmed by screenshot, not just by
+     this measurement, since "roughly centered" is ultimately a visual
+     judgment, not a pixel-exact one. */
+  .about__photo {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 38% center;
+  }
+
+  /* The pull-quote card: docs/DESIGN-SYSTEM.md's pull-quote treatment
+     (olive rule, italic, larger Manrope — see ReflectionArticle.astro's
+     own blockquote styling) adapted into a self-contained elevated card
+     rather than an in-column rule-bordered block. Left-aligned, like
+     everything else on this page now — the rule sits at the same left
+     edge as the quote text instead of centered above it.
+     No shadow, deliberately — docs/DESIGN-SYSTEM.md's Shape/space/depth
+     section is explicit and has no stated exception: "shadow only on
+     hover-lift and the search dropdown, never at rest." This card is
+     static, not a link or button, so there's no hover state to hang a
+     shadow on either — adding one anyway (or inventing a hover just to
+     justify one) would be the kind of one-off exception that erodes a
+     restraint rule the moment it's convenient. The card still reads as a
+     deliberate pause without one: a different surface color, generous
+     padding, and rounded corners already separate it from the paragraphs
+     around it, the same way every other at-rest card on this site (the
+     author box, a pillar tile, the newsletter card) achieves elevation
+     without a shadow. */
+  .about__pullquote {
+    /* margin-bottom only — this div is a direct child of <Prose>, so
+       Prose's own `.prose > * + *` rule already gives it a margin-top;
+       adding one here too would stack the two, the exact bug class
+       flagged repeatedly elsewhere in this codebase. */
+    background: var(--surface-2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-7) var(--space-6);
+    margin-bottom: var(--space-8);
+  }
+
+  .about__pullquote::before {
+    content: '';
+    display: block;
+    width: 3rem;
+    height: 2px;
+    background: var(--olive-text);
+    margin-bottom: var(--space-4);
+  }
+
+  .about__pullquote-text {
+    font-style: italic;
+    font-size: var(--step-2);
+    line-height: 1.4;
+    color: var(--ink);
+    max-width: 32ch;
+  }
+
+  /* The closing sign-off — its own card, not a reuse of <AuthorBox />.
+     AuthorBox's "Written by" framing fits introducing the author on
+     somebody else's reading (an article they didn't write); on the page
+     that IS the author's own bio, that label doesn't make sense, so this
+     is a purpose-built row instead: avatar, then the name/title as one
+     line with an em dash, exactly the sign-off copy's own original
+     format. Same surface-2/radius-lg card language as the pull-quote
+     above it, so the two read as the page's two deliberate pauses
+     without being the same component. */
+  .about__signoff {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    background: var(--surface-2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin-top: var(--space-8);
+  }
+
+  .about__signoff-photo {
+    flex-shrink: 0;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--radius-pill);
+    object-fit: cover;
+  }
+
+  .about__signoff-text {
+    font-size: var(--step-0);
+  }
+
+  .about__signoff-name {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .about__signoff-title {
+    color: var(--muted);
+  }
+
+  @media (max-width: 40rem) {
+    /* Stacked, not full-width: the photo keeps its own modest size and
+       centers above the text, rather than growing to fill the mobile
+       viewport the way a real hero photo space would. The row-span trick
+       is a desktop-only concern (there's no second column to span into
+       here), so this simply reverts to a single column, each block in
+       normal document order — photo, then title, then copy. */
+    .about__layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto;
+    }
+
+    .about__photo-frame {
+      grid-column: 1;
+      grid-row: 1;
+      width: 13rem;
+      margin-inline: auto;
+      margin-bottom: var(--space-6);
+    }
+
+    .about__title-block {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .about__copy {
+      grid-column: 1;
+      grid-row: 3;
+    }
   }
 </style>
