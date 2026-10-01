@@ -2238,6 +2238,84 @@ rendered image.
 (0 errors/warnings/hints) both pass clean — including the real build
 failure found and fixed along the way, not just the final green run.
 
+## v1.1 redesign, post-photo fixes: dark-mode contrast, button hover, newsletter card spacing
+
+**Status: built on branch `redesign`, not merged, not live.** Three fixes
+from owner review of the preview, still within the pre-session-6 cleanup
+window, not a new numbered session.
+
+**Dark-mode surface/tile contrast (`src/styles/tokens.css`):** the dark
+palette's `[data-theme='dark']` block was rebuilt. The original values were
+all packed into roughly the bottom 13% of the lightness range, with
+adjacent-step contrast ratios of ~1.01–1.09:1 — confirmed numerically, not
+just by eye, which is exactly why the Home page's Fundamentals/Gear tiles
+read as nearly invisible against the Start Here band behind them, and
+`tile-sand`/`tile-dark` had become functional duplicates (one unit apart in
+two channels). Rebuilt around two different kinds of token rather than one
+flat ladder: the generic surface ladder (`surface-1/2/3/card`, `tile-dark`)
+now spans a real ~10–25% lightness range, each adjacent step individually
+checked (1.18–1.30:1, at or above light mode's own internal step gaps);
+`roast` and `tile-sand` are treated as **pillar identity colors** (same as
+light mode, where roast is very dark and sand is very light — opposite
+ends of the range, not middle rungs), pushed to the dark and light
+extremes respectively. Fundamentals tile vs. the band it sits on went from
+~1.01:1 to 2.49:1; Gear tile vs. the same band went from ~1.02:1 to 1.29:1.
+Every real text-on-surface pairing already in use on the site was
+recomputed against the new values before committing to them — all still
+clear the 4.5:1 minimum (large text 3:1), lowest result 4.65:1
+(`--muted` on `--surface-card`). Verified visually in a real browser,
+dark mode: all six Explore page pillar tiles (not just the two originally
+reported) are now clearly distinct from their band and from each other.
+
+**Button hover text turning black (`src/styles/global.css`):** a real bug,
+not a style tweak. The sitewide `a:hover { color: var(--espresso) }` rule
+is a single element+pseudo-class selector, which beats a single class like
+`.btn--primary` on CSS specificity (0,1,1 vs. 0,1,0) — so hovering any
+`<a class="btn ...">` silently fell through to that link-hover color
+instead of keeping the button's own. This was invisible on `.btn--outline`
+and `.chip` purely by coincidence (their rest color already equals
+`--espresso`/`--ink`), but real and visible on `.btn--primary` and
+`.btn--outline-on-dark`, whose rest colors differ: in light mode this
+turned "Start here" and "Read the latest" (Home hero, on an always-dark
+photo card) and "Read the essay" (ReflectionStrip, also always-dark) black
+on hover/active — unreadable. Fixed by re-asserting each variant's own
+color at two-class specificity (0,2,0) in its own `:hover`/`:active` rule,
+which reliably beats the single-class-plus-pseudo rule regardless of
+source order — the general `a:hover` rule itself was left untouched, since
+it's correct for normal links. Verified via real computed styles in a
+browser, both themes: `.btn--primary` stays white-on-dark-fill on hover in
+light mode and dark-on-cream-fill in dark mode; `.btn--outline-on-dark`
+stays `--ink-on-dark` in both.
+
+**Newsletter card spacing (`src/components/Prose.astro`):** the
+mid-article subscribe card's own heading had an unwanted 64px
+`margin-top`, making it look top-heavy. Root cause: the card is raw HTML
+injected directly into the markdown AST (`remark-inline-subscribe.mjs`) as
+a sibling of the article's real content, so its own internal `<h2>` sits
+one level deeper in the DOM (inside `.email-capture`) than an authored
+markdown heading does (a direct child of `.prose`) — confirmed directly via
+the real DOM. `.prose :global(h2)`'s plain descendant selector matched
+both, giving the card's own heading an unwanted margin on top of the
+card's own padding. **This was never actually dark-mode-specific**, even
+though it was reported and first investigated as a dark-mode issue — it's
+a structural selector bug independent of color, present equally in both
+themes; it likely only became visually obvious in dark mode because that's
+also the preview the owner was reviewing right after the surface-contrast
+fix above made dark-mode bands properly distinct for the first time. Fixed
+by scoping to a direct-child combinator (`.prose > :global(h2)` and the
+equivalent for `h3`) — the same architectural pattern, and the same
+lesson, as the earlier Reflection pull-quote fix this redesign. Verified:
+computed `marginTop` is `0px` in light mode, dark mode, and at phone width;
+screenshotted all three and confirmed the card reads as evenly spaced top
+to bottom in every case.
+
+**Verified:** `npm run build` and `astro check` both pass clean. Checked in
+a real browser (not just computed styles) across both themes and mobile:
+Home page hero and Start Here tiles (dark mode desktop + mobile light
+mode), Explore page's full six-tile grid (dark mode), the newsletter card
+on the sour-coffee article (light desktop, light mobile, dark mobile), and
+all three affected buttons' hover states in both themes.
+
 **Next up (redesign rollout):** decide whether to fix `main`'s own copy of
 the `keystatic.config.ts` `heroImage` bug (small, independent, needs its
 own go-ahead — see above) before or alongside session 6. Then session 6

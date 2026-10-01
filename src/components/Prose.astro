@@ -16,11 +16,31 @@
     margin-top: var(--space-5);
   }
 
-  .prose :global(h2) {
+  /* Direct-child combinator, not a plain descendant selector — real bug,
+     not a style choice: the mid-article subscribe box is raw HTML
+     injected directly into the markdown AST (remark-inline-subscribe.mjs)
+     as a sibling of the article's own paragraphs/headings, so its own
+     internal <h2> ("Get one good coffee idea a week.") sits one level
+     deeper in the DOM (inside .email-capture) than an authored markdown
+     heading does (a direct child of .prose itself) — confirmed directly
+     via the real DOM, not assumed. A plain `.prose :global(h2)`
+     descendant selector matched BOTH, giving the card's own heading an
+     unwanted 64px margin-top on top of the card's own padding — visibly
+     top-heavy, more noticeable once the surface colors got a real
+     distinguishable dark-mode palette, but present in both themes; it was
+     never actually theme-specific. `.email-capture h2`'s own rule (no
+     margin-top, by design — the card's padding already provides the gap)
+     had equal CSS specificity to this one, so whichever stylesheet
+     happened to load first silently won — exactly the kind of
+     source-order fragility already flagged and fixed once this session
+     for the Reflection pull-quote. Scoping to direct children here is the
+     structural fix: it only ever matches the real authored headings,
+     never a nested card's own heading, regardless of cascade order. */
+  .prose > :global(h2) {
     margin-top: var(--space-8);
   }
 
-  .prose :global(h3) {
+  .prose > :global(h3) {
     margin-top: var(--space-6);
   }
 

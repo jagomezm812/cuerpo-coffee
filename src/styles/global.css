@@ -376,10 +376,36 @@ input {
   border: 1px solid var(--button-bg);
 }
 
+/* Real bug, not a style tweak: the sitewide `a:hover { color: var(
+   --espresso) }` rule a few lines up is a single element + pseudo-class
+   selector, which beats a single class like `.btn--primary` on
+   specificity (0,1,1 vs 0,1,0) — so hovering any <a class="btn ...">
+   silently fell through to that link-hover color instead of keeping the
+   button's own. Invisible on .btn--outline and .chip purely by
+   coincidence (their own rest color already equals --espresso/--ink —
+   the override lands on the same value), but real and visible on
+   .btn--primary (button-fg) and .btn--outline-on-dark (ink-on-dark),
+   whose rest colors are different: in light mode this turned "Start
+   here" and "Read the latest" (on Home's always-dark hero card) and
+   "Read the essay" (ReflectionStrip, also always-dark) black on
+   hover/active, unreadable against the dark background behind them.
+   Fixed by re-asserting each variant's own color at two-class
+   specificity (0,2,0), which reliably beats the single-class-plus-
+   pseudo rule regardless of source order. */
+.btn--primary:hover,
+.btn--primary:active {
+  color: var(--button-fg);
+}
+
 .btn--outline-on-dark {
   background: transparent;
   color: var(--ink-on-dark);
   border: 1px solid var(--ink-on-dark);
+}
+
+.btn--outline-on-dark:hover,
+.btn--outline-on-dark:active {
+  color: var(--ink-on-dark);
 }
 
 .btn--outline {

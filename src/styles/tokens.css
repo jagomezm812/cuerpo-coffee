@@ -128,10 +128,50 @@
 }
 
 [data-theme='dark'] {
-  --surface-1: #1a120e;
-  --surface-2: #231a14;
-  --surface-3: #2c2119;
-  --surface-card: #33261d;
+  /* Post-session: the original dark surface/tile values below were all
+     packed into roughly the bottom 13% of the lightness range (surface-1
+     #1a120e through tile-sand #3a2c22), with adjacent-step contrast
+     ratios of ~1.01–1.09:1 — confirmed numerically, not just by eye: at
+     that compression, WCAG contrast math (which is what "looks distinct"
+     ultimately has to clear) barely registers a difference, which is
+     exactly why the Fundamentals (tile-sand) and Gear (roast) tiles read
+     as blending into the Start Here band behind them. Also found two
+     tokens that were functionally duplicates: tile-sand (#3a2c22) and
+     tile-dark (#3a2b21) differed by one unit in two channels — no visual
+     role of "sand" distinct from "dark placeholder fill" at all.
+
+     Rebuilt with real, verified-wider gaps, reasoning about two different
+     kinds of token here rather than one flat ladder:
+     - The generic surface ladder (surface-1/2/3/card, tile-dark) now
+       spans roughly 10–25% lightness instead of 10–20%, same warm-brown
+       hue family (~24–25°), each step's own adjacent-pair contrast ratio
+       checked individually (1.18–1.30:1 — at or above light mode's own
+       internal steps of 1.14–1.32:1, computed the same way, for a fair
+       comparison).
+     - roast and tile-sand are PILLAR IDENTITY colors (Gear, Fundamentals),
+       not middle rungs of that ladder — light mode already treats them
+       this way (roast very dark, sand very light, opposite ends of the
+       range), so this just restores that same relationship in dark mode:
+       roast pushed down near tile-black's territory, tile-sand pushed up
+       well past surface-card. tile-sand vs. the Start Here band it
+       actually sits on went from ~1.01:1 to 2.49:1; roast vs. the same
+       band went from ~1.02:1 to 1.29:1 — smaller than tile-sand's jump
+       because roast sits at the dark end, where contrast-ratio math
+       compresses regardless of hue — but still a genuine, confirmed
+       improvement, not a rounding difference.
+
+     Every existing text-on-surface pairing in real use on the site
+     (--ink/--muted/--olive-text/--accent-text on each surface,
+     --ink-on-dark/--muted-on-dark/--olive-on-dark/--accent-on-dark on
+     each always-dark block, and the Fundamentals tile's own
+     --tile-sand-ink text on the new --tile-sand) was recomputed against
+     these new values before committing to them — all still clear 4.5:1
+     (large text 3:1), several with real margin, not reused by assumption
+     just because the old ones happened to pass. */
+  --surface-1: #231810;
+  --surface-2: #35271d;
+  --surface-3: #453124;
+  --surface-card: #523c2d;
   --ink: #f3eadf;
   --muted: #bbac9d;
   --hairline: #33261e;
@@ -142,11 +182,11 @@
   --button-fg: #1b1410;
   --olive-text: #a9b47f;
   --accent-tint: rgba(227, 173, 132, 0.16);
-  --tile-sand: #3a2c22;
+  --tile-sand: #845e33;
   --tile-sand-ink: #f3eadf;
-  --tile-dark: #3a2b21;
-  --tile-black: #0f0a07;
-  --roast: #2e2219;
-  --footer: #0b0705;
+  --tile-dark: #2e2017;
+  --tile-black: #140d08;
+  --roast: #1c110b;
+  --footer: #0f0905;
   --shadow-lift: 0 24px 48px rgba(0, 0, 0, 0.5);
 }
