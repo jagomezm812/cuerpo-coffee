@@ -2316,20 +2316,63 @@ mode), Explore page's full six-tile grid (dark mode), the newsletter card
 on the sour-coffee article (light desktop, light mobile, dark mobile), and
 all three affected buttons' hover states in both themes.
 
-**Next up (redesign rollout):** decide whether to fix `main`'s own copy of
-the `keystatic.config.ts` `heroImage` bug (small, independent, needs its
-own go-ahead — see above) before or alongside session 6. Then session 6
-itself — go live: merge `redesign` into `main` after merging latest `main`
-into it first, tag `v1.1-redesign`, final CHANGELOG entry.
-`docs/UPDATE-WORKFLOW.md` section 7, step 6. The branch is now fully
-audited, has real author/About/Home/article-hero content, the
-`run_worker_first` tech debt is resolved, and both planning docs are
-current — clean going into that step, modulo the `main`-side Keystatic fix
-above.
+## v1.1 redesign, session 6: merged to main, live
 
-**Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
-(`@astrojs/sitemap` — next new dependency, build-time only, no client cost;
-worth checking its own i18n-awareness when this is picked up), build-time OG
-image generation. For i18n specifically: smoke-test the Keystatic
-`translationKey` relationship picker live: consider `hreflang` alternate tags
-for SEO (not built this pass — flagged as a good idea, not yet approved/scoped).
+**Status: done. `redesign` is merged into `main` (PR #2, merge commit
+`0153a0c`) and tagged `v1.1-redesign`.** The real live site at
+cuerpo.coffee now serves the full redesign.
+
+**The `main`-side Keystatic `heroImage` bug (flagged above as needing its
+own go-ahead) resolved itself, not via a separate fix:** a standalone
+branch, `fix/keystatic-hero-image-path`, had been created earlier off
+`main` specifically to carry just that one-line `publicPath: 'images/'`
+fix — but it was never actually merged anywhere. Diffing it directly
+against `redesign`'s own `keystatic.config.ts` before merging confirmed
+`redesign` already contains that exact fix as a strict superset (plus
+every later session's schema additions on top) — so merging `redesign`
+into `main` carried it over automatically, with no separate merge needed.
+`fix/keystatic-hero-image-path` is now fully redundant and safe to delete.
+
+**Merge sequence, as actually run:** `git pull` on `main` (fast-forwarded
+one commit, `32da483`); merged `main` into `redesign` — already
+up to date, since `redesign` had already merged `main` in a prior session;
+`npm run build`/`astro check` reconfirmed clean; opened PR #2
+(`redesign` → `main`) and merged it with a real merge commit (not squashed,
+not rebased) so the branch's full session-by-session history stays
+intact and reachable from `main`; tagged that merge commit `v1.1-redesign`
+and pushed the tag.
+
+**Verified against the real live site, not just a green build** — the
+GitHub check-run for Cloudflare's Workers Build (`Workers Builds:
+cuerpo-coffee`) stayed `in_progress` in the GitHub API for over 20 minutes
+after the merge, past the point other evidence confirmed the deploy had
+actually finished — a reporting lag in Cloudflare's GitHub integration
+itself, not a stuck or failed build. Confirmed the real site directly
+instead of waiting on that status to flip: `curl` against
+`https://cuerpo.coffee` for the Home, Article, Explore, and About pages
+(all real `200`s); both self-hosted variable fonts serving (`200`), the
+old deleted v1.0 fonts correctly `404`ing; the Home hero photo and the
+sour-coffee article's hero photo both resolving to real built `/_astro/`
+asset paths (confirming the Keystatic `heroImage` fix holds in
+production, not just in a local build); the author box's real avatar
+photo; Pagefind's own JS reachable (`200`); and all six pillar tiles'
+`pillar--<category>` classes present on the live Explore page. **The
+Chrome browser extension was not connected this session either** (checked
+via `list_connected_browsers`, same as every prior session this
+redesign) — so this is real HTTP/content verification against the actual
+production site, not a visual screenshot, and that substitution is
+disclosed here rather than presented as equivalent without comment.
+
+**`docs/CHANGELOG.md`** got the final "merged to main and live" entry,
+dated 2026-10-01, pointing at the merge commit and the `v1.0-pre-redesign`
+tag as the rollback path.
+
+**Next up (Phase 2, remaining):** delete the now-redundant
+`fix/keystatic-hero-image-path` branch (confirmed safe above — its one
+fix is already a strict subset of what just landed on `main`). Then:
+Cloudflare Web Analytics, RSS + sitemap (`@astrojs/sitemap` — next new
+dependency, build-time only, no client cost; worth checking its own
+i18n-awareness when this is picked up), build-time OG image generation.
+For i18n specifically: smoke-test the Keystatic `translationKey`
+relationship picker live; consider `hreflang` alternate tags for SEO (not
+built this pass — flagged as a good idea, not yet approved/scoped).
