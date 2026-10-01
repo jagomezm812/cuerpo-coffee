@@ -13,6 +13,8 @@ import PillarTile from '../components/PillarTile.astro';
 import SeriesBand from '../components/SeriesBand.astro';
 import ReflectionStrip from '../components/ReflectionStrip.astro';
 import EmailCapture from '../components/EmailCapture.astro';
+import { Image } from 'astro:assets';
+import homeHero from '../assets/home/home-hero.jpg';
 import {
   getPublishedArticles,
   getArticleHref,
@@ -73,15 +75,26 @@ function riseInClass(index: number): string {
   <section class="hero-band">
     <div class="hero-wrap">
       <div class="hero-card rise-in">
-        <p class="hero-card__label">Home coffee, done properly</p>
-        <h1 class="hero-card__title">Coffee <em>with body.</em></h1>
-        <p class="hero-card__description">
-          Clear, unhurried articles that teach you to make genuinely good coffee at home — no gear
-          obsession, no jargon.
-        </p>
-        <div class="hero-card__actions rise-in rise-in--delay-1">
-          <a href="#start-here" class="btn btn--primary">Start here</a>
-          <a href="/articles" class="btn btn--outline-on-dark">Read the latest</a>
+        <Image
+          src={homeHero}
+          alt="Freshly roasted coffee beans held in cupped hands above a roaster."
+          class="hero-card__photo photo-settle"
+          widths={[480, 768, 1200, 1600]}
+          sizes="(min-width: 90rem) 1392px, 100vw"
+          format="avif"
+        />
+        <div class="hero-card__scrim" aria-hidden="true"></div>
+        <div class="hero-card__content">
+          <p class="hero-card__label">Home coffee, done properly</p>
+          <h1 class="hero-card__title">Coffee <em>with body.</em></h1>
+          <p class="hero-card__description">
+            Clear, unhurried articles that teach you to make genuinely good coffee at home — no gear
+            obsession, no jargon.
+          </p>
+          <div class="hero-card__actions rise-in rise-in--delay-1">
+            <a href="#start-here" class="btn btn--primary">Start here</a>
+            <a href="/articles" class="btn btn--outline-on-dark">Read the latest</a>
+          </div>
         </div>
       </div>
     </div>
@@ -189,9 +202,43 @@ function riseInClass(index: number): string {
     padding-inline: var(--space-5);
   }
 
+  /* Photo space 1: the hero card's own real photograph, filling the card
+     edge to edge, with the text overlaid on top — replacing the flat
+     --tile-dark placeholder this session (see CLAUDE.md's Progress notes
+     on why the photo wasn't added sooner, and the temporary-stock-photo
+     flag in docs/BACKLOG.md). --tile-dark is kept as the card's own
+     background, now just a loading-state fallback underneath the photo,
+     not the visible fill. */
   .hero-card {
+    position: relative;
+    overflow: hidden;
     background: var(--tile-dark);
     border-radius: var(--radius-lg);
+  }
+
+  .hero-card__photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* A flat, uniform dark overlay — not a gradient (docs/DESIGN-SYSTEM.md:
+     "No gradients", a blanket rule, not just an olive-specific one) — so
+     the *-on-dark text stays legible over a real, visually busy photo
+     instead of the flat placeholder color it used to sit on. Contrast
+     checked directly against the actual photo once built, not assumed
+     from picking a value that looked reasonable. */
+  .hero-card__scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(18, 12, 9, 0.55);
+  }
+
+  .hero-card__content {
+    position: relative;
+    z-index: 1;
     padding: var(--space-10) var(--space-7);
   }
 
@@ -364,7 +411,7 @@ function riseInClass(index: number): string {
       grid-template-columns: 1fr;
     }
 
-    .hero-card {
+    .hero-card__content {
       padding: var(--space-7) var(--space-5);
     }
   }
