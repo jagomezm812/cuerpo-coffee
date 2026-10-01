@@ -5,10 +5,13 @@ description: >-
   fast and fix it with grind size, water temperature, and time.
 publishDate: 2026-01-12
 category: troubleshooting
+lang: en
 tags:
   - extraction
   - troubleshooting
   - beginner
+heroImage: heroImage.jpg
+heroAlt: Espresso pouring into a glass cup.
 draft: false
 featured: true
 ---
