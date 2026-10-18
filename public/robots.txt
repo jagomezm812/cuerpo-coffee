@@ -1,3 +1,5 @@
 User-agent: *
 Disallow: /keystatic
 Disallow: /api/keystatic
+
+Sitemap: https://cuerpo.coffee/sitemap-index.xml
