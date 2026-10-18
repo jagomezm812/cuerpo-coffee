@@ -2422,10 +2422,11 @@ spinning up a comparison harness disproportionate to what's being checked.
 
 ## Technical SEO: sitemap, robots.txt, hreflang, og:image
 
-**Status: built on branch `seo-technical-1`, merge pending owner approval.**
-Four fixes, one commit each, from a read-only diagnosis requested after the
-owner found `sitemap-index.xml` 404ing on the live site. Scoped deliberately
-narrow — no design, layout, color, or content changes, per explicit
+**Status: merged into `main` (PR #4, merge commit `178559a`), approved by the
+owner after reviewing the branch.** Four fixes, one commit each, from a
+read-only diagnosis requested after the owner found `sitemap-index.xml`
+404ing on the live site. Scoped deliberately narrow — no design, layout,
+color, or content changes, per explicit
 instruction.
 
 **1. Sitemap — the actual reported bug.** `@astrojs/sitemap` had never been
