@@ -1,6 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
+import sitemap from '@astrojs/sitemap';
 import { unified } from '@astrojs/markdown-remark';
 import remarkInlineSubscribe from './src/lib/remark-inline-subscribe.mjs';
 import remarkInlineReflectionPhoto from './src/lib/remark-inline-reflection-photo.mjs';
@@ -10,7 +11,25 @@ export default defineConfig({
   site: 'https://cuerpo.coffee',
   // React islands are available project-wide (not just Keystatic) — each
   // usage still needs to ship 0 KB to pages that don't use it.
-  integrations: [react()],
+  integrations: [
+    react(),
+    sitemap({
+      // /keystatic-app is the real built page behind the admin UI (see
+      // worker/index.ts's comment on why it isn't just called /keystatic);
+      // /api/* isn't an Astro page at all so it wouldn't appear here
+      // regardless, but excluded explicitly rather than relied on
+      // implicitly. Neither is meant to be crawled or indexed — robots.txt
+      // already disallows both.
+      filter: (page) => !page.includes('/keystatic') && !page.includes('/api/'),
+      // Deliberately NOT using this integration's own `i18n` option: that
+      // would have it generate <xhtml:link> hreflang annotations *inside*
+      // the sitemap itself, which would duplicate (and could drift out of
+      // sync with) the real per-page <link rel="alternate" hreflang="...">
+      // tags in BaseHead.astro — one source of truth for that signal, not
+      // two. Keeping this integration to its minimal job: list the real
+      // pages, nothing more.
+    }),
+  ],
   i18n: {
     locales: ['en', 'es'],
     defaultLocale: 'en',
