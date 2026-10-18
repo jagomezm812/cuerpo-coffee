@@ -43,15 +43,23 @@ const formattedDate = publishDate.toLocaleDateString(lang === 'es' ? 'es' : 'en-
 });
 
 const translationHref = await getTranslationHref(article);
+// hreflang only makes sense for a REAL translation pair — translationHref
+// is already undefined when none exists (getTranslationHref's own doing),
+// so this stays undefined too in that case. The other language is always
+// the opposite of this page's own `lang` for a genuine pair.
+const otherLang: 'en' | 'es' = lang === 'es' ? 'en' : 'es';
+const translation = translationHref ? { lang: otherLang, href: translationHref } : undefined;
 const h2Count = headings.filter((h) => h.depth === 2).length;
 ---
 
 <Base
   title={title}
   description={description}
+  image={heroImage?.src}
   articleMeta={{ publishDate, updatedDate }}
   lang={lang}
   otherLangHref={translationHref}
+  translation={translation}
 >
   <ReadingProgress />
 

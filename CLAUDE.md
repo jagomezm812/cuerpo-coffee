@@ -2420,9 +2420,78 @@ right verification was testing the one skill with actual executable code
 (`contrast.mjs`) against known values directly, which was done above, not
 spinning up a comparison harness disproportionate to what's being checked.
 
-**Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS + sitemap
-(`@astrojs/sitemap` — next new dependency, build-time only, no client cost;
-worth checking its own i18n-awareness when this is picked up), build-time OG
-image generation. For i18n specifically: smoke-test the Keystatic
-`translationKey` relationship picker live; consider `hreflang` alternate tags
-for SEO (not built this pass — flagged as a good idea, not yet approved/scoped).
+## Technical SEO: sitemap, robots.txt, hreflang, og:image
+
+**Status: built on branch `seo-technical-1`, merge pending owner approval.**
+Four fixes, one commit each, from a read-only diagnosis requested after the
+owner found `sitemap-index.xml` 404ing on the live site. Scoped deliberately
+narrow — no design, layout, color, or content changes, per explicit
+instruction.
+
+**1. Sitemap — the actual reported bug.** `@astrojs/sitemap` had never been
+installed at all, despite `site: 'https://cuerpo.coffee'` already being
+correctly set in `astro.config.mjs` and this exact item sitting in this
+section's own "Next up" note since before the redesign. Added as a real
+dependency (build-time only, zero client cost — the cost already pre-approved
+here). `filter: (page) => !page.includes('/keystatic') && !page.includes('/api/')`
+excludes the admin UI and API routes — `/api/*` isn't an Astro page anyway so
+it was never going to appear regardless, excluded explicitly rather than
+relied on implicitly. **Deliberately not using the integration's own `i18n`
+option** — that generates `hreflang` annotations inside the sitemap itself,
+which would have been a second, competing source of truth once real
+`hreflang` tags landed in the same branch (see #3). Verified: a real build
+produces `dist/sitemap-index.xml` and `dist/sitemap-0.xml`; 28 URLs total, 7
+under `/es/` (21 English), both languages of the sour-coffee article present,
+zero mention of `keystatic` anywhere in the file.
+
+**2. `robots.txt`.** One line added — `Sitemap: https://cuerpo.coffee/sitemap-index.xml`
+— existing `Disallow` rules untouched.
+
+**3. `hreflang` alternate tags — the item this section's own prior note had
+flagged as "not built this pass."** Only emitted for a genuine translation
+pair (matching `translationKey` on both sides), never for the generic
+"see all Spanish articles" fallback — that distinction mattered enough to
+need its own, separate prop: `BaseHead.astro` gained a `translation` prop,
+deliberately kept apart from `Base.astro`'s existing `otherLangHref` (which
+*does* resolve to that generic fallback, correctly, for the human-facing
+footer/prompt links — reusing it for `hreflang` would have falsely claimed
+every English article has a Spanish translation at `/es/articles`).
+`Article.astro` and `ReflectionArticle.astro` both compute it from the
+`translationHref` they already had. **A real, if minor, bug caught along the
+way:** `getTranslationHref()`'s returned paths have no trailing slash, but
+every canonical/sitemap URL on this site does — left unfixed, an `hreflang`
+tag would have pointed one redirect hop away from the real canonical URL.
+Fixed locally inside `BaseHead.astro` (a `withTrailingSlash()` helper),
+not in the shared `articles.ts` helper, to keep this change scoped to
+exactly what it touches. Verified: the sour-coffee article's English/Spanish
+pair each emit `hreflang="en"`, `hreflang="es"`, and `hreflang="x-default"`
+(pointing at English, the site's real `defaultLocale`), trailing-slash-
+consistent and symmetric with each other; an article with no translation
+emits none.
+
+**4. `og:image`/`twitter:image` on article pages — a real bug, not a missing
+feature.** `BaseHead.astro` already fully supported an `image` prop; `Article
+.astro`/`ReflectionArticle.astro` already destructured `heroImage` for the
+on-page hero photo; the two were simply never connected. Fixed by passing
+`image={heroImage?.src}` (the already-built asset URL, not the raw
+`ImageMetadata` object) into `<Base>`. No invented fallback — an article with
+no `heroImage` still emits neither tag. Verified three cases in the built
+output: the sour-coffee article (has a real hero photo) emits a correct
+absolute `og:image`; an article with no `heroImage` set emits neither; the
+Spanish sour-coffee translation also emits neither — confirmed by its own
+frontmatter, which genuinely has no `heroImage` field (a separate content
+entry from the English one, not a threading bug).
+
+**Verified overall:** `npm run build` (30 routes, sitemap generated) and
+`astro check` (0 errors/warnings/hints) both pass clean after each individual
+commit and once more with all four together. `npm audit` flagged 4
+pre-existing vulnerabilities (`sharp`, `source-map-js`, `smol-toml`,
+`http-cache-semantics`) after installing `@astrojs/sitemap` — traced directly
+(`npm ls`) to Astro core and `@astrojs/markdown-remark`/`@astrojs/react`
+themselves, not introduced by the new dependency; left alone rather than
+running `npm audit fix` unprompted, which would be an unrelated, unrequested
+dependency change outside this task's scope.
+
+**Next up (Phase 2, remaining):** Cloudflare Web Analytics, RSS feed
+(sitemap and `hreflang` are now done, see above). For i18n: smoke-test the
+Keystatic `translationKey` relationship picker live.
