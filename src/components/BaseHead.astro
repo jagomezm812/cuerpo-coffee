@@ -15,14 +15,41 @@ export interface Props {
   // cuerpo_theme='light' in localStorage (the visitor clicking the
   // toggle) always wins over this.
   forceDark?: boolean;
+  // This page's own language — needed here (not just in Base.astro) to
+  // know which hreflang value is "self" versus "the other one" below.
+  lang?: 'en' | 'es';
+  // The OTHER language's real URL for this exact piece of content, only
+  // when one genuinely exists — deliberately a SEPARATE prop from
+  // Base.astro's own `otherLangHref`, which resolves to a generic
+  // fallback (the translated articles index) when no real per-article
+  // translation exists, correct for a human-facing "switch language"
+  // link but wrong for hreflang: claiming every article has a Spanish
+  // translation at /es/articles would be false for most of them. Only
+  // pass this when `getTranslationHref()` actually found a real pair.
+  translation?: { lang: 'en' | 'es'; href: string };
 }
 
-const { title, description, image, articleMeta, forceDark = false } = Astro.props;
+const { title, description, image, articleMeta, forceDark = false, lang = 'en', translation } = Astro.props;
 
 const siteName = 'Cuerpo Coffee';
 const fullTitle = title === siteName ? title : `${title} — ${siteName}`;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const ogImage = image ? new URL(image, Astro.site).toString() : undefined;
+
+// `translation` only exists for a real translated pair (see the Props
+// comment above), so englishURL/spanishURL are only ever computed when
+// there's something real to point at — never the generic index fallback.
+// getTranslationHref() returns paths with no trailing slash, but every
+// canonical/sitemap URL on this site has one (Astro.url.pathname always
+// does for a static build) — normalize here so an hreflang tag never
+// points one redirect hop away from the page's own real canonical URL.
+const withTrailingSlash = (path: string) => (path.endsWith('/') ? path : `${path}/`);
+const englishURL = translation
+  ? (lang === 'en' ? canonicalURL : new URL(withTrailingSlash(translation.href), Astro.site))
+  : undefined;
+const spanishURL = translation
+  ? (lang === 'es' ? canonicalURL : new URL(withTrailingSlash(translation.href), Astro.site))
+  : undefined;
 
 // The forceDark flag is baked into the minified script text below as a
 // literal `true`/`false` at build time (via set:html) rather than read
@@ -36,6 +63,18 @@ const themeScript = `(function(){try{var t=localStorage.getItem('cuerpo_theme'),
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="canonical" href={canonicalURL} />
+{
+  translation && (
+    <>
+      <link rel="alternate" hreflang="en" href={englishURL} />
+      <link rel="alternate" hreflang="es" href={spanishURL} />
+      {/* x-default points search engines at the English version when a
+         visitor's language isn't otherwise matched — this site's actual
+         default locale (astro.config.mjs: defaultLocale: 'en'). */}
+      <link rel="alternate" hreflang="x-default" href={englishURL} />
+    </>
+  )
+}
 <title>{fullTitle}</title>
 <meta name="description" content={description} />
 

@@ -21,6 +21,12 @@ export interface Props {
   // prompt both consume otherLangHref, just in different directions.
   lang?: 'en' | 'es';
   otherLangHref?: string;
+  // Separate from otherLangHref above: that one resolves to a generic
+  // fallback (the translated index) for the human-facing footer/prompt
+  // links when no real translation exists — correct there, wrong for
+  // hreflang. This is only ever set when a genuine per-article
+  // translation pair exists; see BaseHead.astro's Props comment.
+  translation?: { lang: 'en' | 'es'; href: string };
   // Session 5: only ReflectionArticle.astro passes this — forces the
   // whole page (header/footer included, since there's no scoped-dark
   // mechanism separate from the site-wide theme) into dark mode on first
@@ -37,6 +43,7 @@ const {
   bare = false,
   lang = 'en',
   otherLangHref,
+  translation,
   forceDark = false,
 } = Astro.props;
 
@@ -56,6 +63,8 @@ const resolvedOtherLangHref = otherLangHref ?? (lang === 'es' ? '/' : '/es/artic
       image={image}
       articleMeta={articleMeta}
       forceDark={forceDark}
+      lang={lang}
+      translation={translation}
     />
   </head>
   <body>

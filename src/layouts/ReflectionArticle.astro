@@ -65,6 +65,10 @@ const formattedDate = publishDate.toLocaleDateString(lang === 'es' ? 'es' : 'en-
 });
 
 const translationHref = await getTranslationHref(article);
+// Same reasoning as Article.astro: hreflang only for a real translation
+// pair, never the generic fallback — see Base.astro/BaseHead.astro.
+const otherLang: 'en' | 'es' = lang === 'es' ? 'en' : 'es';
+const translation = translationHref ? { lang: otherLang, href: translationHref } : undefined;
 ---
 
 <Base
@@ -73,6 +77,7 @@ const translationHref = await getTranslationHref(article);
   articleMeta={{ publishDate, updatedDate }}
   lang={lang}
   otherLangHref={translationHref}
+  translation={translation}
   forceDark
 >
   <article class="reflection-band" data-pagefind-body data-pagefind-meta={`category:${category}`}>
