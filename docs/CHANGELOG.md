@@ -7,6 +7,11 @@ Newest first. One entry for every change that reaches the live site.
 - **Why:** [the reason]
 - **How to undo:** revert the pull request [number], or roll back in Cloudflare to the deployment before [date].
 
+## 2026-10-22 · docs: CLAUDE.md slimmed from 164k to 7.7k characters
+- **What changed:** Documentation only, no change to the site. `CLAUDE.md` had grown past its 150,000-character limit because every session appended its own notes. The session history was moved word for word into `docs/PROGRESS-INFRA.md`, `docs/PROGRESS-REDESIGN.md` and `docs/TOOLING.md`, and a short `docs/LESSONS.md` index of recurring bug classes was added. `CLAUDE.md` now holds the overview, commands, rules, a short "Current state" block (capped at 2,000 characters) and a list of which docs file to read when. The "keep CLAUDE.md up to date" rule now says: log long notes in `docs/PROGRESS-*.md`, put a short summary here, and keep only the Current state in CLAUDE.md.
+- **Why:** The file was over the size limit and loaded in full every session. All 176 old paragraphs were checked to still exist in the new files, and the build and type check pass.
+- **How to undo:** revert pull request #5.
+
 ## 2026-10-18 · technical SEO: sitemap, robots.txt, hreflang, og:image
 - **What changed:** Four fixes from a read-only SEO diagnosis, now merged to `main`. (1) The site now generates a real `sitemap-index.xml`/`sitemap-0.xml` at build time (28 URLs — every English and Spanish page, admin/API routes correctly excluded) — this is the fix for the originally reported broken link. (2) `robots.txt` now points crawlers at that sitemap. (3) Articles that have a real Spanish/English translation pair now tell search engines so directly (`hreflang` tags) — articles with no translation correctly get none, and the generic "see all Spanish articles" link is never mistaken for a real per-article translation. (4) Article pages now include a real preview photo in link previews (Slack, X, iMessage, etc.) when they have a hero image — previously none did, even when a photo existed on the page itself.
 - **Why:** Owner asked for a read-only diagnosis of why `sitemap-index.xml` 404'd; all four fixes were proposed in that diagnosis and approved before any code was touched, then approved again to merge after review.
