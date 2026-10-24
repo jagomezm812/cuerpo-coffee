@@ -3,35 +3,34 @@
 **A build specification written to be handed to Claude Code.**
 Save this in the repo as `docs/TECHNICAL-PLAN.md`. Section 13 contains the `CLAUDE.md` to place at the repo root.
 
-> **Version 1.1, design amendment — now built, not just approved (last checked 2026-09-30).** The redesign this note originally just *announced* has since actually been built, across six sessions, entirely on a branch named `redesign` — not yet merged into `main`, not yet live. It overrides parts of sections 6, 7, 8, 10 and 13: a light and dark theme, rounded cards, a sans-serif type system with a serif for page titles only, a section accent color (olive), simple CSS transitions, search, and richer article pages. The redesign's source of truth is the **Cuerpo Coffee Design System** (saved as `docs/DESIGN-SYSTEM.md` in the repo). Where this file and the design system disagree on look, the design system wins. For exactly what's been built, session by session, with the reasoning and the honest limitations behind each decision, read **`CLAUDE.md`'s Progress section** — that file, not this one, is the live record of current state; this document is the original spec plus this amendment note, kept for historical context.
+> **Version 1.2 (October 2026), aligned with the $10k plan.** Refreshes the sections that were stale in 1.1: hosting (Cloudflare Worker with static assets), email (Kit → beehiiv), the content schema, pages, SEO rules, phases and deployment, and the out-of-scope list. Adds product pages, affiliate redirects, click-to-play video, a small calculator tool and an AI draft lane. The work itself is done in the numbered site sessions of the **Site & Docs Update Plan** (`SITE-PLAN.md`), one session per sitting, under the update protocol.
 >
-> **Still stale here, not yet amended into the sections below (read `CLAUDE.md` for the real current versions instead):** section 3 (Stack — the site is deployed as a Cloudflare Worker with static assets, not classic Pages; Kit's free plan no longer includes automations), section 4 (Repository structure — doesn't mention `worker/index.ts`, `wrangler.jsonc`, the `/es/` route tree, `src/lib/`, the `series`/`author` collections, or any component or page added since v1.0), section 5 below (Content model — the schema shown is missing `lang`, `translationKey`, `series`, `seriesOrder`, and the `'reflection'` category; see `src/content.config.ts` for the real current one), and sections 9 and 11 (phases and deployment).
+> **Design:** the source of truth is the **Cuerpo Coffee Design System** (`docs/DESIGN-SYSTEM.md`). Where this file and the design system disagree on look, the design system wins.
 >
-> **Resolved, not open anymore:** the first-visit language prompt's ~70 KB React cost (this note used to ask someone to "confirm it hydrates on idle... so the 20 KB budget holds") was measured directly, disclosed to the owner, and deliberately accepted as a one-off, named exception to the 20 KB article-page budget — specifically to exercise the React/TypeScript infrastructure end-to-end on a real public page, not because the feature itself needed React. It was never going to "hold" the budget as originally hoped; the budget note in section 8 below should be read with that exception in mind.
+> **Open item (Session 6):** the first-visit language prompt is a ~70 KB React island. Replace it with a plain script under 2 KB and remove React if nothing else uses it, so the 20 KB JavaScript budget on article pages holds.
 
 ---
 
 ## 1. Project brief
 
-Cuerpo Coffee is an English-language coffee publication. The site is a fast, editorial, image-forward blog with email capture on every article, and — in a later phase — a single product page selling a digital guide.
+Cuerpo Coffee is an English-language coffee publication with a business goal of $10,000/month by month 30 from six income streams. The site is a fast, editorial, image-forward publication with email capture on every article, a small shop of digital products, buying guides with affiliate links, and click-to-play videos.
 
-The owner is not a developer. They can run commands that are given to them, but they will not debug code. Every decision below optimizes for: **low running cost, nothing to maintain, nothing that can break while unattended, and publishing without touching a terminal.**
+The owner is not a developer. They can run commands that are given to them, but they will not debug code. Every decision optimizes for: **low running cost, nothing to maintain, nothing that can break while unattended, and publishing without touching a terminal.** AI agents may draft content, but nothing reaches the live site without the owner's approval.
 
 ---
 
 ## 2. Non-negotiable constraints
 
-These are settled. Do not propose alternatives unless a constraint below becomes technically impossible.
-
 | Constraint | Reason |
 |---|---|
-| Static output only. No server, no database. | Nothing to patch, nothing to be exploited, no monthly bill. |
-| Articles are Markdown files committed to the repo. | Portable, versioned, owned forever, zero cost. |
-| Hosted on **Cloudflare Pages**, not Vercel. | Vercel's free Hobby plan is restricted to non-commercial use; this site will sell a product. Cloudflare Pages free allows commercial use, gives unlimited bandwidth, 500 builds/month, 25 MiB max per file. |
-| No client-side JavaScript unless a feature genuinely requires it. | Performance is part of the brand. |
-| No comments system, no popups, no cookie banner. | Nothing that needs consent means no banner. Keep it that way. |
-| No third-party analytics scripts beyond Cloudflare Web Analytics. | Privacy, speed, and no cookie banner. |
+| Static output. No database. Server code only as the small Worker routes under `/api/` and redirects. | Nothing to patch, nothing to exploit, no monthly bill. |
+| Articles are Markdown files committed to the repo. | Portable, versioned, owned forever. |
+| Hosted on **Cloudflare** (a Worker with static assets), not Vercel. | Commercial use allowed on the free plan, global CDN, preview per branch. |
+| No client-side JavaScript unless a feature genuinely requires it. Budget: 20 KB per article page. | Performance is part of the brand. |
+| No comments, no popups, no cookie banner. | Nothing that needs consent. |
+| No third-party analytics or ad scripts. Cloudflare Web Analytics only. YouTube loads only after a click. | Privacy, speed, no banner. |
 | Publishing must be possible from a browser. | The owner will not use a terminal weekly. |
+| AI-drafted and writer articles arrive as pull requests from `draft/` branches and are never merged without the owner's approval. | Quality and trust. |
 
 ---
 
@@ -39,113 +38,86 @@ These are settled. Do not propose alternatives unless a constraint below becomes
 
 | Layer | Choice | Rationale |
 |---|---|---|
-| Framework | **Astro** (latest stable), static output | Content-first, ships ~zero JS by default, first-class Markdown/MDX, content collections with schema validation. Next.js is a heavier tool for a problem this shape. |
-| Content | Markdown/MDX in `src/content/`, typed with Astro content collections | Schema validation catches malformed frontmatter at build time rather than in production. |
-| Styling | Plain CSS with custom properties, in one design-token file | No Tailwind. The owner will read this CSS occasionally; tokens are more legible than utility soup, and the design system here is small. |
-| Editing UI | **Keystatic** mounted at `/keystatic`, GitHub mode | Browser-based editor that commits Markdown to the repo. Fallback if it proves awkward: Sveltia CMS or Decap CMS — same model, same content files, so the choice is reversible. |
-| Host | Cloudflare Pages, Git integration, auto-deploy on push to `main` | Free, commercial use permitted, global CDN, preview deploy per branch. |
-| DNS + registrar | Cloudflare | At-cost domains, zero-config SSL, same dashboard as hosting. |
-| Analytics | Cloudflare Web Analytics | Free, cookieless, no consent banner required. |
-| Email | Kit (formerly ConvertKit), free plan | Free to 10,000 subscribers with unlimited broadcasts, forms and landing pages. Embed via its hosted form endpoint — no JS widget. |
-| Payments (Phase 4) | Lemon Squeezy | 5% + $0.50, no monthly fee, and acts as merchant of record so global VAT is handled rather than falling on a Mexico-based seller. Polar is a cheaper alternative (4% + $0.40) if preferred. |
+| Framework | **Astro** (latest stable), static output | Content-first, ~zero JS by default, content collections with schema validation. |
+| Content | Markdown/MDX in `src/content/`, typed collections | Schema errors fail the build. |
+| Styling | Plain CSS with custom properties in one token file | No Tailwind. |
+| Editing UI | **Keystatic** at `/keystatic`, GitHub mode, GitHub OAuth App | Browser editor committing Markdown. Editors other than the owner save to `draft/` branches and open pull requests (Session 4). |
+| Host | **Cloudflare Worker with static assets**, Git integration, auto-deploy on push to `main`, preview per branch | Free, commercial use. |
+| Server routes | Small Worker routes under `/api/` (subscribe, Keystatic auth) and `/go/<slug>` redirects | The only server code. |
+| DNS | Cloudflare (registrar Porkbun) | Same dashboard as hosting. |
+| Analytics | Cloudflare Web Analytics; Google Search Console (no script) | Cookieless. |
+| Email | **beehiiv** (free Launch plan; Scale from the guide waitlist). Kit kept behind `EMAIL_PROVIDER=kit|beehiiv` until the switch is proven | Automations, referrals, paid subscriptions, ad network. |
+| Payments | **Lemon Squeezy** hosted checkout (5% + $0.50, merchant of record) | Global sales tax handled for a Mexico-based seller. No file hosting or license keys built by us. |
+| Marketplace | Etsy for printables and short guides (outside the site) | Extra buyers while the audience is small. |
+| Membership | beehiiv paid subscriptions (Cuerpo Reserve) | No accounts built on the site. |
+| Search | Pagefind, built at deploy, loaded only when opened | Static. |
 
 ---
 
-## 4. Repository structure
+## 4. Repository structure (key parts)
 
 ```
 cuerpo-coffee/
-├── CLAUDE.md                  # context for every Claude Code session
+├── CLAUDE.md
 ├── docs/
-│   ├── TECHNICAL-PLAN.md      # this file
-│   └── LEARNING-GUIDE.md
+│   ├── TECHNICAL-PLAN.md · DESIGN-SYSTEM.md · BUSINESS-PLAN.md
+│   ├── SITE-PLAN.md · MARKETING-BRIEF.md · EDITORIAL-POLICY.md · AI-PIPELINE.md
+│   ├── UPDATE-WORKFLOW.md · LEARNING-GUIDE.md · CHANGELOG.md · BACKLOG.md
+│   └── AUDIT-2026-11.md          # written by Session 0
+├── prompts/                      # AI pipeline templates; not part of the built site
 ├── keystatic.config.ts
 ├── astro.config.mjs
-├── package.json
-├── public/
-│   ├── fonts/                 # self-hosted woff2 only
-│   ├── favicon.svg
-│   └── robots.txt
+├── wrangler.jsonc                # non-secret settings and flags
+├── public/  (fonts/, favicon.svg, robots.txt)
 └── src/
-    ├── content/
-    │   ├── config.ts          # collection schemas
-    │   └── articles/
-    │       └── why-your-coffee-tastes-sour.md
-    ├── components/
-    │   ├── BaseHead.astro
-    │   ├── Header.astro
-    │   ├── Footer.astro
-    │   ├── ArticleCard.astro
-    │   ├── EmailCapture.astro
-    │   └── Prose.astro
-    ├── layouts/
-    │   ├── Base.astro
-    │   └── Article.astro
-    ├── pages/
-    │   ├── index.astro
-    │   ├── articles/
-    │   │   ├── index.astro
-    │   │   └── [...slug].astro
-    │   ├── about.astro
-    │   ├── subscribe.astro
-    │   ├── rss.xml.ts
-    │   └── 404.astro
-    └── styles/
-        ├── tokens.css
-        └── global.css
+    ├── content/articles/         # one Markdown file per article
+    ├── data/links.json           # affiliate and product links for /go/ and checkout buttons
+    ├── components/               # BaseHead, Header, Footer, EmailCapture, PillarTile, Pick, Rejected, Video, …
+    ├── layouts/                  # Base, Article
+    ├── pages/                    # index, articles/, about, subscribe, thanks, editorial-policy,
+    │                             # disclosure, privacy, tools/ratio, shop, method/, es/, 404, rss.xml
+    └── styles/                   # tokens.css, global.css
 ```
 
 ---
 
 ## 5. Content model
 
-**Stale — kept for historical shape only; see `src/content.config.ts` for the
-real, current schema and `CLAUDE.md`'s Progress notes for why each field
-below was added.** The file itself also moved: Astro 7's content-collection
-config must live at `src/content.config.ts`, not `src/content/config.ts` as
-this section originally said.
-
-There are now three collections, not one: `articles` (below), `series`
-(a name and description only — an ordered group of articles, added for the
-"Beginner Basics" series), and `author` (`name`, `title`, `avatar` — the
-one site-wide byline every article and the About page's sign-off both pull
-from, edited as a Keystatic singleton rather than per-article).
-
-`articles`' real current schema, as of the v1.1 redesign:
+One collection, `articles`:
 
 ```ts
 {
-  title: string,              // ≤ 60 chars, used as <h1> and <title>
-  description: string,        // 120–155 chars, meta description + card excerpt
+  title: string,              // ≤ 60 chars
+  description: string,        // 120–155 chars
   publishDate: date,
-  updatedDate: date | undefined,
+  updatedDate: date | undefined,  // shown as "Updated <date>", used as dateModified
   category: 'troubleshooting' | 'fundamentals' | 'gear' | 'methods' | 'sourcing' | 'reflection',
-  tags: string[],             // default []
+  tags: string[],
   heroImage: image | undefined,
-  heroAlt: string | undefined,   // required when heroImage is present
-  draft: boolean,             // default false; drafts excluded from build
-  featured: boolean           // default false; max one featured on homepage
-  lang: 'en' | 'es',          // default 'en'
-  translationKey: reference to another article | undefined, // set only on a non-English entry: the English article it translates
-  series: reference to a series entry | undefined,           // must be set together with seriesOrder, or neither
-  seriesOrder: number | undefined,
+  heroAlt: string | undefined,    // required when heroImage is present
+  lang: 'en' | 'es',              // default 'en'
+  translationKey: string | undefined, // links an article to its translation
+  draft: boolean,
+  featured: boolean,
+  faq: { question: string, answer: string }[] | undefined,  // FAQPage JSON-LD when filled (Session 1)
+  affiliate: boolean,             // default false; shows the disclosure line (Session 7)
+  video: { youtubeId, title, uploadDate, poster } | undefined, // Session 8
+  aiAssisted: boolean,            // records only, not shown (Session 4)
+  editor: string | undefined      // records only, not shown (Session 4)
 }
 ```
 
-`'reflection'` was added to `category` for the essay-style section of the
-v1.1 redesign; `lang`/`translationKey` for the English/Spanish routing
-built after v1.0; `series`/`seriesOrder` for the series data model.
-
 Rules:
-- Filename is the slug. Lowercase, hyphenated, no dates in the filename.
-- `draft: true` articles must be excluded from the production build, the article index, RSS, and the sitemap.
-- The build must **fail loudly** on a schema violation rather than silently skipping an article — `heroAlt`-requires-`heroImage` and `series`-requires-`seriesOrder` (and vice versa) are both enforced this way.
+- Filename is the slug: lowercase, hyphenated, no dates.
+- `draft: true` is excluded from the build, index, RSS and sitemap.
+- The build fails loudly on a schema violation.
+- `npm run check:content` warns (does not fail) on: title > 60, description outside 120–155, missing alt text, fewer than 2 internal links, no h2.
 
 ---
 
-## 6. Design system (amended v1.1)
+## 6. Design system (amended v1.1, unchanged in 1.2)
 
-The source of truth is the Cuerpo Coffee Design System (`docs/DESIGN-SYSTEM.md`). Define everything below in `src/styles/tokens.css` as custom properties, **using these exact token names**. No hardcoded colors or sizes anywhere else in the codebase.
+The source of truth is the Cuerpo Coffee Design System (`docs/DESIGN-SYSTEM.md`). Define everything below in `src/styles/tokens.css` as custom properties, **using these exact token names**. No hardcoded colors or sizes anywhere else.
 
 ### Palette
 
@@ -185,147 +157,138 @@ The source of truth is the Cuerpo Coffee Design System (`docs/DESIGN-SYSTEM.md`)
 }
 ```
 
-Two accents, both small: **olive** marks sections and **copper** is a warm spark. Olive (about 4% of a page) is allowed only on section labels, category names, section markers (series rings, the leaf ornament and rule, the pull-quote rule, the reading-progress line), the Troubleshooting tile and the category pills; on always-dark blocks it is the light olive `--olive-on-dark` for labels. **Olive is never a button, never a page or band background, never a link, headline or body text, and never a gradient.** Every button is neutral (`--button-bg` on `--button-fg`) and page backgrounds are only `--surface-1/2/3` and the always-dark blocks. Copper is limited to the Sourcing tile, the italic word in the Home hero and the New badge. Color follows topic: Troubleshooting olive, Fundamentals sand, Gear roast, Methods white, Sourcing copper, Reflection near-black.
+Two accents, both small: **olive** marks sections and **copper** is a warm spark. Olive (about 4% of a page) only on section labels, category names, section markers, the Troubleshooting tile and category pills; `--olive-on-dark` for labels on dark blocks. **Olive is never a button, page or band background, link, headline, body text or gradient.** Every button is neutral (`--button-bg` on `--button-fg`). Copper only on the Sourcing tile, the italic word in the Home hero and the New badge. Color follows topic: Troubleshooting olive, Fundamentals sand, Gear roast, Methods white, Sourcing copper, Reflection near-black.
 
 ### Typography
 
-- **Display:** Fraunces, **page H1 only**, weight 300 to 400, optical sizing on, `WONK` off, letter-spacing -0.025em.
-- **Everything else:** Manrope. H2 600 and card titles 700 with letter-spacing -0.035em; body 400; labels 12px, 700, uppercase, tracking 0.14em; the wordmark 800.
-- Self-host both as `woff2` in `public/fonts/` with `font-display: swap`. Do not load Google Fonts over the network in production.
-
-Fluid type scale using `clamp()`:
+- **Display:** Fraunces, page H1 only, weight 300–400, optical sizing on, `WONK` off, letter-spacing -0.025em.
+- **Everything else:** Manrope. H2 600, card titles 700 (-0.035em), body 400, labels 12px 700 uppercase 0.14em, wordmark 800.
+- Self-host both as `woff2` in `public/fonts/` with `font-display: swap`.
 
 | Token | Range |
 |---|---|
 | `--step--1` | 0.875 to 0.9375rem |
-| `--step-0` | 1.0625 to 1.25rem (body, up to 20px) |
+| `--step-0` | 1.0625 to 1.25rem (body) |
 | `--step-1` | 1.33 to 1.5rem |
 | `--step-2` | 1.66 to 2rem |
 | `--step-3` | 2.1 to 3.5rem (H2) |
-| `--step-4` | 2.9 to 5.5rem (page H1, 46px on phones to 88px) |
+| `--step-4` | 2.9 to 5.5rem (page H1) |
 
-Article body line-height 1.6 to 1.7, measure capped at **68ch** (a 680 to 720px column).
+Article body line-height 1.6–1.7, measure capped at 68ch.
 
-### Spacing
+### Spacing, shape, motion, dark mode
 
-A single scale, powers of a 4px base: `4 8 12 16 24 32 48 64 96 128`, exposed as `--space-1` through `--space-10`. Bands use 96 to 104px of vertical padding and 120px side margins at 1440px. Vertical rhythm should feel generous: err toward more space than looks right at first.
-
-### Shape and depth
-
-Radius scale: `--radius-sm` 8px, `--radius-md` 20px (callouts), `--radius-lg` 28px (tiles, cards, photo spaces), `--radius-xl` 36px (newsletter card), `--radius-pill` 999px (buttons, chips, the email field). No gradients. Shadow only on hover-lift and the search dropdown, never at rest. Hairlines are 1px.
-
-### Rules of the look
-
-- **Layout:** full-width color-blocked bands in a fixed rhythm (white, cream, white, sand), then the newsletter band and a dark footer that is always last. At most **two large photo spaces per page**; every other card is typographic. Page H1 is the only serif.
-- **Header:** wordmark left, links (Articles, Start here, Series, About), search, a dark-mode toggle, and a Subscribe button. On phones, search, the toggle and a menu.
-- **Motion:** CSS only. Theme change 350ms color fade; card hover lift 4px (280ms); button lift 1px (200ms); hero and title blocks rise 18px over 700ms once per load; photo spaces settle from scale 1.05 over 1.4s. Everything off under `prefers-reduced-motion`. Page-to-page transitions use `@view-transition { navigation: auto; }`, no JavaScript.
-- **Dark mode:** the tokens above on `[data-theme="dark"]`. Default follows the system setting; an explicit choice wins and is remembered. The toggle shows a moon in day mode and a sun in dark mode. A tiny inline script in `<head>` sets the theme before first paint so nothing flashes. Reflection essays open dark unless the visitor chose light. Photo cards, the Reflection strip and the footer stay dark in both themes.
-- **Images:** full-bleed, or inside a rounded photo card; never floated.
-- **Type:** two typefaces total (Fraunces for page H1, Manrope for the rest).
-- **Template rules:** adding or removing sections follows `guidelines/10-page-template.md` in the design system.
+- Spacing scale `4 8 12 16 24 32 48 64 96 128` as `--space-1`…`--space-10`; bands 96–104px vertical, 120px sides at 1440px.
+- Radius: `--radius-sm` 8px, `--radius-md` 20px, `--radius-lg` 28px, `--radius-xl` 36px, `--radius-pill` 999px. No gradients. Shadow only on hover-lift and the search dropdown.
+- Motion CSS only: theme fade 350ms; card lift 4px (280ms); button lift 1px (200ms); title rise 18px over 700ms once; photo settle from 1.05 over 1.4s; all off under `prefers-reduced-motion`; `@view-transition { navigation: auto; }`.
+- Dark mode via `[data-theme="dark"]`; system default; explicit choice remembered; moon in day mode, sun in dark mode; inline `<head>` script prevents flashing; Reflection essays open dark unless the visitor chose light; photo cards, Reflection strip and footer stay dark.
+- Layout: color-blocked bands, at most two photo spaces per page (a video counts as one), typographic cards otherwise, newsletter band then dark footer last.
 
 ---
 
 ## 7. Page specifications
 
-### `/` — Homepage
-In order: the hero photo card (photo space 1: an original photograph, or a short muted loop) with the tagline and two buttons; **Start here**, three tiles for beginners (Troubleshooting, Fundamentals, Gear); **Latest**, one featured article plus the three newest, with topic chips; a **Series** band; the **Reflection strip** on the roast band (photo space 2); the newsletter band; the footer. No hero carousel, no "as seen in," no testimonials. Sections with nothing to show yet are hidden, never rendered empty.
+### `/` — Home
+Hero photo card (photo space 1) with tagline and two buttons; **Start here** (Troubleshooting, Fundamentals, Gear tiles; a tile with no article is hidden); **Latest** (one featured + three newest, topic chips); **Series** (hidden with fewer than 2 series); **Reflection strip** (photo space 2); newsletter band; footer. Sections with nothing to show are hidden automatically.
+
+### Header and footer
+Header: wordmark, Articles, Start here, Series (when present), About, search, theme toggle, Subscribe. Phones: search, toggle, menu. Footer columns: Read (Articles, Tools, Shop when live) and Cuerpo (About, Editorial policy, Disclosure, Privacy, Subscribe); faint wordmark; language switcher shown only where a Spanish version exists.
 
 ### `/articles` — Explore
-Search with a results dropdown, built at build time (Pagefind) and loaded only when the search is opened; six topic tiles that resolve to real static URLs (`/articles/category/gear`); the series; and a tag cloud linking to static tag pages (`/articles/tag/[tag]`). Category and tag navigation is never client-side filtering. No pagination until there are more than 30 articles.
+Search (Pagefind, loaded on open), six topic tiles to static category pages, series, tag cloud (top 16). No client-side filtering. No pagination until 30+ articles.
 
 ### `/articles/[slug]` — Article
-Title block (page H1, standfirst, author, date, reading time), a hero photo space, a reading-progress line (CSS scroll-driven animation, no JavaScript), a sticky table of contents built from the `<h2>`s at build time, the body, and a series rail when the article belongs to a series. Email capture inline after the second `<h2>` and again after the final paragraph. Then the author box and three related articles ("Keep reading") matched by category. Reflection essays use the same template and open in the dark theme. No share buttons.
+Title block (H1, standfirst, author, date, "Updated" date, reading time; affiliate disclosure line when `affiliate: true`), hero photo or video space, reading-progress line (CSS), sticky table of contents, body, series rail when relevant. **Email capture after the last paragraph of the second section (never between a heading and its text)** and again after the final paragraph, offering the Home Coffee Checklist, with a hidden `source` field. Author box, then **three** "Keep reading" articles (same category first, then newest). No share buttons.
 
-### `/about` — About
-One page. Who you are, why coffee, what this publication is for. A real photograph. This page converts more subscribers per visit than any other; write it properly.
+### `/about`
+Founder story, real photo, link to the editorial policy, newsletter band at the end.
 
-### `/subscribe` — Landing page
-Standalone, no header navigation. Single purpose: the lead magnet (*The Home Coffee Checklist*) in exchange for an email.
+### `/subscribe` and `/thanks`
+Standalone, no header navigation. `/subscribe` offers the checklist. `/thanks` confirms and links to 3 starter articles.
 
-### `/404`
-Keep the brand voice. Link back to `/articles`.
+### `/editorial-policy`, `/disclosure`, `/privacy`
+Title block + reading body; text from `docs/EDITORIAL-POLICY.md` (Session 3).
 
-### `/rss.xml`
-Full-content feed of non-draft articles.
+### `/tools/ratio`
+Static table without JavaScript; a vanilla script under 5 KB adds a live calculator; newsletter band below (Session 9).
+
+### `/shop` (month 2)
+Lists digital products as typographic cards with neutral buttons to Lemon Squeezy checkout links stored in `src/data/links.json`; member discount note; links to Etsy optional. Product JSON-LD with price.
+
+### `/method`, `/method/waitlist`, `/method/thanks` (months 4–5)
+Waitlist page with no header navigation (signups tagged `method-waitlist`); sales page behind `METHOD_LIVE` in `wrangler.jsonc` with two tiers ($34 Guide, $59 Complete), FAQ, Lemon Squeezy hosted checkout and Product JSON-LD; thank-you page. Lemon Squeezy delivers the files.
+
+### `/go/<slug>`
+302 redirect to the URL in `src/data/links.json`. Affiliate links use `rel="sponsored nofollow noopener"`. Disallowed in robots.txt and absent from the sitemap.
+
+### Year 2 (backlog)
+`/selection` (partner-roaster subscription, links to the roaster's store), merch page (print-on-demand partner), `/reserve` (beehiiv membership), "Gear I use", Spanish edition chrome.
+
+### `/404`, `/rss.xml`
+Brand voice 404 linking to `/articles`. Full-content RSS of non-draft articles.
 
 ---
 
 ## 8. Technical requirements
 
-**Performance targets, verified on a real deploy:**
-- Lighthouse Performance ≥ 95 on mobile
-- Largest Contentful Paint < 1.5s on 4G
-- Total JS payload < 20 KB on an article page
-- Every image served as AVIF/WebP via Astro's image pipeline, with explicit `width`/`height` to prevent layout shift
+**Performance (verified on a real deploy):** Lighthouse mobile ≥ 95; LCP < 1.5s on 4G; JS < 20 KB on article pages (before any video click); AVIF/WebP images with explicit width/height.
 
 **SEO:**
-- One `<h1>` per page; heading levels never skip
-- `<title>` and meta description from frontmatter
-- Canonical URL on every page
-- Open Graph and Twitter card tags; OG images generated at build time from the article title if no hero image exists
-- `Article` JSON-LD structured data on article pages
-- `sitemap.xml` via `@astrojs/sitemap`, excluding drafts
-- `robots.txt` allowing everything except `/keystatic`
+- One h1 per page; headings never skip.
+- Title and meta description from frontmatter; canonical on every page; Open Graph and Twitter cards; OG image generated from the title when no hero.
+- JSON-LD: Article (with dateModified), BreadcrumbList, FAQPage when `faq` is filled, VideoObject when `video` is filled, Product on product pages, Organization and WebSite on Home, Person on About.
+- Sitemap via `@astrojs/sitemap`, excluding drafts, `/go/`, category and tag pages with fewer than 3 articles, and `/es/` pages without a real translation; those pages also get `noindex,follow` until they qualify, automatically.
+- hreflang (en, es, x-default) only on pages with a translation (`translationKey`).
+- robots.txt: allow all except `/keystatic`, `/api/keystatic` and `/go/`; point to the sitemap.
+- Google Search Console verified by DNS record in Cloudflare.
 
-**Accessibility:**
-- Contrast ≥ 4.5:1 for body text in both themes (verify `--muted` on `--surface-3`, the tightest pair at 4.7:1, and olive text on cream at 5.6:1)
-- Visible focus states, not `outline: none`
-- Alt text required by schema when a hero image is present
-- Site must be fully usable with JavaScript disabled
+**Accessibility:** contrast ≥ 4.5:1 in both themes; visible focus states; alt text required by schema; icon buttons with aria-labels; usable without JavaScript.
+
+**Legal:** affiliate disclosure line on affiliate pages and a `/disclosure` page; `/privacy` describing email collection and cookieless analytics.
 
 ---
 
 ## 9. Build phases
 
-Each phase ends with a working deploy. Do not start the next phase until the previous one is live and reviewed.
+| Phase | Status |
+|---|---|
+| Phase 1 — Skeleton | Done |
+| Phase 2 — Publishing and plumbing (Keystatic, email, analytics, RSS, sitemap, images) | Done, except the lead magnet and welcome email |
+| Redesign v1.1 | Done (tag `v1.1-redesign`) |
+| Phase 3 — Alignment (months 1–3) | Site Sessions 0–5: audit, search foundations, capture and home fixes, trust pages, editor access, beehiiv |
+| Phase 4 — Earning features (months 2–5) | Site Sessions 6–10: lighter language prompt, affiliate links and buying-guide blocks, click-to-play video, ratio calculator, shop and method pages |
+| Phase 5 — Content mode | After Session 10, code changes only through the backlog, batched about once a month; all effort goes to content, video and products |
 
-### Phase 1 — Skeleton (target: 2 sessions)
-Scaffold Astro, define tokens and global styles, build `Base` and `Article` layouts, `Header`/`Footer`, homepage, article index, article template, about page, 404. Seed with three real articles. Connect the GitHub repo to Cloudflare Pages and verify auto-deploy on push.
-
-**Done when:** the custom domain serves the site over HTTPS and pushing a Markdown file publishes an article.
-
-### Phase 2 — Publishing and plumbing (target: 1 session)
-Keystatic at `/keystatic` in GitHub mode, configured against the `articles` collection with every frontmatter field editable. Kit form embedded in `EmailCapture`. `/subscribe` landing page. Cloudflare Web Analytics. RSS, sitemap, OG image generation. Image optimization pipeline.
-
-**Done when:** the owner can write and publish an article end-to-end in a browser, and a new subscriber lands in Kit.
-
-### Phase 3 — Freeze
-No further code changes. All effort moves to writing. Any design idea gets written into `docs/BACKLOG.md` and batched for a single session in month four. **This phase is the plan's actual risk control** — the common failure for a non-developer running their own site is perpetual redesign.
-
-### Phase 4 — Product (target: 1–2 sessions, month 5)
-`/method` sales page: problem, what's inside, who it's for, price, FAQ, Lemon Squeezy hosted checkout button. `/method/waitlist` capturing to a dedicated Kit tag. Post-purchase thank-you page. Delivery is handled entirely by Lemon Squeezy — do not build file hosting, license keys, or gated content.
-
-**Done when:** a test purchase completes and delivers the file.
+The exact prompts are in `docs/SITE-PLAN.md`. One session per sitting; each ends with a reviewed preview and the owner's approval.
 
 ---
 
 ## 10. Explicitly out of scope
 
-Do not build, and do not suggest building: a CMS with a database, user accounts or login, a comments system, an admin dashboard, a mobile app, server-side rendering beyond the small Worker routes already in place, Docker, a CI pipeline beyond Cloudflare's own build, or any framework component (React/Vue/Svelte) unless a specific interaction demands it and no static solution exists. **Allowed since v1.1:** dark mode through CSS tokens, static search through Pagefind, and CSS transitions.
+Do not build, and do not suggest building: a database, user accounts or login, a comments system, an admin dashboard, a mobile app, server-side rendering beyond the small Worker routes and `/go/` redirects, Docker, a CI pipeline beyond Cloudflare's build and a pull-request template, file hosting or license keys for products, display ads, or framework components (React/Vue/Svelte) unless a specific interaction demands it and no static or vanilla solution exists.
 
-Every item on that list is a maintenance burden that will outlive the enthusiasm that motivated it.
+**Allowed:** dark mode through tokens, Pagefind search, CSS transitions, `/go/` redirects, click-to-play video, small vanilla scripts under 5 KB for tools.
 
 ---
 
 ## 11. Deployment
 
-- `main` is production. Every push triggers a Cloudflare Pages build and deploy.
-- Any other branch produces a preview URL. Use a branch for anything visual so it can be reviewed before it goes live.
-- Build command `npm run build`, output directory `dist`.
-- Environment variables (Keystatic GitHub app credentials, Kit form ID) live in Cloudflare Pages project settings. **Never commit a secret to the repo.**
-- Recovery from a bad deploy: roll back to the previous deployment in the Cloudflare dashboard, then fix forward. Do not attempt a Git surgery to recover a broken site.
+- `main` is production; every push triggers a Cloudflare build and deploy of the Worker with static assets.
+- Any other branch gets a preview URL (Workers & Pages → project → Deployments). Use a branch for anything visual.
+- Build command `npm run build` (runs `check:content` first); output `dist`.
+- Secrets (Keystatic GitHub OAuth credentials, `BEEHIIV_API_KEY`, `BEEHIIV_PUBLICATION_ID`, Kit key while kept) live in Cloudflare **secrets**. Non-secret flags (`EMAIL_PROVIDER`, `METHOD_LIVE`) live in `wrangler.jsonc`. **Never commit a secret.** Keys ever pasted into a chat are treated as exposed and rotated.
+- Recovery: roll back to the previous deployment in Cloudflare, then fix forward. No Git surgery.
 
 ---
 
 ## 12. Working agreement for Claude Code sessions
 
-- Read `CLAUDE.md` and this file at the start of every session.
-- One change per session unless changes are trivially independent. Deploy and review before continuing.
-- When something visual is wrong, ask for a screenshot rather than guessing from a description.
-- Explain *why* when introducing a new concept — the owner is learning the stack as the project is built. Keep explanations to a few sentences and don't repeat them once learned.
-- Never introduce a dependency without stating what it costs (bundle size, maintenance, lock-in) and what the alternative is.
-- If a requirement in this document turns out to be wrong, say so and propose an amendment rather than silently working around it.
+- Read `CLAUDE.md`, this file and `docs/DESIGN-SYSTEM.md` at the start of every session; follow the update protocol.
+- One change per session. Deploy, review, then continue.
+- Ask for a screenshot when something visual is wrong.
+- Explain new concepts in a few sentences.
+- Never add a dependency without stating its cost and the alternative.
+- If a requirement here is wrong, say so and propose an amendment.
 
 ---
 
@@ -334,33 +297,39 @@ Every item on that list is a maintenance burden that will outlive the enthusiasm
 ```markdown
 # Cuerpo Coffee
 
-English-language coffee publication. Teaches beginners to make good coffee at home.
-Selling a paid digital guide from month 5.
+Home-coffee publication. Goal: $10k/month by month 30 from six income streams.
+The email list is the core asset.
 
 ## Owner
 Not a developer. Can run given commands; will not debug code. Explain new concepts briefly.
 
 ## Stack
 Astro (static) · Markdown content collections · plain CSS with tokens · Keystatic at /keystatic ·
-Cloudflare Pages · Kit (email) · Lemon Squeezy (payments, phase 4)
+Cloudflare Worker with static assets · beehiiv (Kit until the switch session is merged) ·
+Lemon Squeezy (payments)
 
 ## Hard rules
-- Static output only. No server, no database.
+- Static output. Server code only as small Worker routes under /api/ and /go/ redirects. No database.
 - No client-side JS unless a feature truly requires it. JS budget: 20 KB per article page.
 - No Tailwind. All design values come from src/styles/tokens.css.
 - No new dependencies without stating the cost and the alternative.
-- Never commit secrets. Environment variables live in Cloudflare Pages settings.
-- Out of scope: comments, accounts, SSR, Docker. React/Vue/Svelte only as an island where no static solution exists (currently the first-visit language prompt).
+- Never commit secrets. Secrets live in Cloudflare secrets; non-secret flags in wrangler.jsonc.
+- AI-drafted or writer articles arrive as pull requests from draft/ branches and are never merged without the owner's approval.
+- Out of scope: comments, accounts, SSR, Docker, display ads, file hosting. React/Vue/Svelte only where no static or vanilla solution exists.
 
 ## Design
-Source of truth: docs/DESIGN-SYSTEM.md (tokens, section rules). Use its token names in src/styles/tokens.css. Light and dark themes.
-Palette: neutrals (--surface-1/2/3), --ink, --muted, olive (--olive, section accents only, never buttons or backgrounds), copper (--accent, a small spark, 2% at most).
+Source of truth: docs/DESIGN-SYSTEM.md. Light and dark themes.
+Palette: neutrals (--surface-1/2/3), --ink, --muted, olive (section accents only, never buttons or backgrounds), copper (a small spark).
 Type: Fraunces for page H1 only, Manrope for everything else. Self-hosted woff2.
-Shape: 28px card radius, pill buttons, no gradients, shadow only on hover-lift. Motion is CSS only and respects prefers-reduced-motion.
-Layout: color-blocked bands, at most two photo spaces per page, typographic cards otherwise, measure capped at 68ch.
+Shape: 28px card radius, pill buttons, no gradients, shadow only on hover-lift. Motion CSS only, respects prefers-reduced-motion.
+Layout: color-blocked bands, at most two photo spaces per page (a video counts as one), typographic cards otherwise, measure 68ch.
 The aesthetic is restraint. When in doubt, remove something.
 
 ## Before you start
-Read docs/TECHNICAL-PLAN.md. It is the spec. Phase 3 is a code freeze — during it,
-design ideas go to docs/BACKLOG.md rather than into the codebase.
+Read docs/TECHNICAL-PLAN.md (the spec), docs/SITE-PLAN.md (the numbered sessions),
+docs/BUSINESS-PLAN.md, docs/EDITORIAL-POLICY.md and docs/AI-PIPELINE.md.
+Ideas outside the current session go to docs/BACKLOG.md, not into code.
+
+## Update protocol
+(keep the existing block from docs/UPDATE-WORKFLOW.md section 9)
 ```

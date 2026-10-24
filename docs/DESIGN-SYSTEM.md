@@ -1,11 +1,11 @@
 # Cuerpo Coffee: Design System (plain-text copy)
 
-> Save this in the repo as `docs/DESIGN-SYSTEM.md` and reference it from `CLAUDE.md`. It is the plain-text copy of the Cuerpo Coffee Design System artifact, which also holds the live component previews and the light and dark tokens. Where the two differ, the artifact is newer.
+> Save this in the repo as `docs/DESIGN-SYSTEM.md` and reference it from `CLAUDE.md`. It is the plain-text copy of the Cuerpo Coffee Design System artifact, which also holds the live component previews and the light and dark tokens. Where the two differ, the artifact is newer. **Updated October 2026:** new components for buying guides, video, tools and the shop, and rules for the new page types (end of this file).
 
 
 A quiet, editorial, high-ticket look for a home-coffee publication: warm neutrals, olive as a quiet section accent with a small copper spark, generous space, soft geometry, and photography that is obviously the author's own.
 
-**This is a template, not a mood board.** Every page is assembled from a small set of section types in a fixed rhythm. New articles and new sections can be added or removed every day without losing the concept, as long as the invariants below hold. Read the "Page template and section rules" section below before adding or removing any section — that's this same document, not a separate file (an earlier version of this doc pointed at a `guidelines/10-page-template.md` that was never actually created; the content it would have held already lives inline here).
+**This is a template, not a mood board.** Every page is assembled from a small set of section types in a fixed rhythm. New articles and new sections can be added or removed every day without losing the concept, as long as the invariants below hold. Read `guidelines/10-page-template.md` before adding or removing any section.
 
 ## The concept: five invariants
 
@@ -13,7 +13,7 @@ A quiet, editorial, high-ticket look for a home-coffee publication: warm neutral
 2. **Warm and quiet.** Cream, sand and espresso carry the site. Olive marks sections and copper is a small warm spark; neither is ever a button or a page background.
 3. **One serif.** Fraunces is used for page H1 only. Everything else is Manrope.
 4. **Color-blocked bands.** Sections are full-width bands that alternate white, cream and sand. The footer is always the darkest band.
-5. **Two photo spaces per page, at most.** Every other card is typographic. Photography is original, never stock.
+5. **Two photo spaces per page, at most.** Every other card is typographic. Photography is original, never stock. A click-to-play video counts as a photo space.
 
 ## Color
 
@@ -36,7 +36,7 @@ Every button is neutral: `button-bg` on `button-fg`, which inverts in dark mode.
 Olive identifies a section. Use it for:
 
 - Section labels: the small uppercase words above a heading ("Start here", "Series", "Newsletter", "Written by") and category names.
-- Section markers: the numbered rings in a series list, the pull-quote rule, the table-of-contents and series progress markers, the reading-progress line. (A leaf ornament closing out an article was part of the original concept but was never actually built — no component or style for it exists anywhere in the codebase. Either build it properly in a future session or drop it from this list; don't leave it implied as already live.)
+- Section markers: the numbered rings in a series list, the leaf ornament and rule that close an article, the pull-quote rule, the table-of-contents and series progress markers, the reading-progress line.
 - The Troubleshooting topic tile and the category pills.
 - On always-dark blocks, section labels in the light olive (`olive-on-dark`).
 
@@ -44,9 +44,7 @@ Never: buttons of any kind, page or band backgrounds, cards other than the Troub
 
 ### Copper: the warm spark
 
-Copper is small and rare: the Sourcing tile, the italic word in the Home hero ("with body."), the "New" badge, and the matched-word highlight in the search dropdown's results. If it shows up more than once or twice on a screen, remove some.
-
-(A handful of pre-redesign surfaces still use the old, wider copper footprint — the sitewide default link color, the language-preference prompt's "Español" button, `ArticleCard`'s hover state on the not-yet-rebuilt category/tag pages and the Spanish article tree, and `Prose`'s default blockquote border. These are known, tracked leftovers from before this color system was tightened, not new copper being added — see `CLAUDE.md`'s Progress notes for which ones are deliberately in scope for a future session versus deliberately left alone.)
+Copper is small and rare: the Sourcing tile, the italic word in the Home hero ("with body."), and the "New" badge. If it shows up more than once or twice on a screen, remove some.
 
 ## Typography
 
@@ -56,9 +54,9 @@ Copper is small and rare: the Sourcing tile, the italic word in the Home hero ("
 
 ## Shape, space, depth
 
-- Radius: 28px for tiles and cards, 36px for the newsletter card, 20px for compact embedded UI (the search dropdown is the one real user of this today — a standalone content callout like a pull-quote or a closing sign-off reads as a card in its own right and uses the 28px card radius instead, not the 20px value), pill for buttons, chips and the email field.
+- Radius: 28px for tiles and cards, 36px for the newsletter card, 20px for callouts, pill for buttons, chips and the email field.
 - No gradients. Shadow only on hover-lift and the search dropdown, never at rest. Hairlines are 1px.
-- Container: 1152px of content (72rem — the actual built value; this doc previously said 1200px, which was never what shipped). Hero and photo cards inset 24px from the edges.
+- Container: 1200px of content with 120px page margins at 1440px wide. Hero and photo cards inset 24px from the edges (1392px wide).
 - Tiles sit on a 3-column grid with 24px gaps.
 
 ## Motion
@@ -67,7 +65,7 @@ Simple and quiet. There is no motion token family, so these are the rules:
 
 - Theme change: colors fade over 350ms.
 - Cards lift 4px on hover (280ms) and the arrow nudges 4px; buttons lift 1px (200ms) and press to scale .98.
-- Page entrance: hero and title blocks rise 18px over 700ms, staggered by 80ms, once per load. The same rise also staggers grid/list content (Home's Start here tiles and Latest rows, Explore's topic tiles) at the same 80ms step, capped at a 240ms maximum delay regardless of list length — a long list shouldn't take the better part of a second to finish settling on every single page load.
+- Page entrance: hero and title blocks rise 18px over 700ms, staggered by 80ms, once per load.
 - Photo spaces settle from scale 1.05 over 1.4s. Dropdowns fade in over 300ms.
 - Everything switches off under `prefers-reduced-motion`.
 - Page to page: CSS cross-document view transitions (`@view-transition { navigation: auto; }`), no JavaScript.
@@ -89,28 +87,30 @@ Text is at least 4.5:1 in both themes (large text 3:1). Every control has a visi
 
 ## Anatomy: the order is fixed
 
-1. **Header** on `surface-1`: wordmark, four links, search, dark-mode toggle, Subscribe. (Only two of the four links exist today — Articles and About; Start here and Series wait on their own pages. Search is a round icon button that links out to the real search field on Explore, not an inline bar in the header itself — see the Search component entry below.)
+1. **Header** on `surface-1`: wordmark, links (Articles, Start here, Series when there are 2+, About), search, dark-mode toggle, Subscribe.
 2. **Opening**: the hero photo card on Home; the title block on articles and Explore.
 3. **Content bands**, alternating `surface-1`, `surface-2` and `surface-3`.
 4. **Reflection strip** (optional, Home only), on `roast`.
 5. **Newsletter band** on `surface-2` (Home) or `surface-3` (articles), with a white card.
-6. **Footer** on `footer`: link columns, a faint oversized wordmark, the language switcher. Always last.
+6. **Footer** on `footer`: link columns (Read; Cuerpo: About, Editorial policy, Disclosure, Privacy, Subscribe), a faint oversized wordmark, the language switcher (only where a Spanish version exists). Always last.
 
 ## The only allowed section types
 
 | Section | Use for | Band |
 |---|---|---|
 | Hero photo card | Home opening, photo space 1 | `surface-1` with an inset dark card |
-| Title block | Article, essay and Explore opening | `surface-1` |
+| Title block | Article, essay, Explore and utility-page opening | `surface-1` |
 | Start here | Three bento tiles for beginners | `surface-2` |
 | Latest | One featured card plus three rows, with topic chips | `surface-1` |
 | Series | Two series cards | `surface-3` |
 | Topic tiles | Six tiles, 3 by 2 | `surface-2` |
 | Tag cloud | Top 16 tags | `surface-1` |
 | Reading body | Table of contents, 680px column, series rail | `surface-1` |
-| Author box | Photo, name, title | `surface-2` card on band |
+| Author box | Photo, name, two-sentence bio | `surface-2` card on band |
 | Keep reading | Three related tiles | `surface-1` |
 | Reflection strip | Featured essay, photo space 2 | `roast` |
+| Product tiles | Shop and method tiers | `surface-2` |
+| Calculator | Tools pages | `surface-1` |
 | Newsletter band | Email capture | `surface-2` (Home) or `surface-3` (articles) |
 
 ## Adding a section
@@ -129,7 +129,7 @@ Text is at least 4.5:1 in both themes (large text 3:1). Every control has a visi
 - Any band can go except the header, the footer and the newsletter band.
 - After removing one, re-alternate the neighbors so no two adjacent bands share a color.
 - "Start here" is the entry to the beginner ladder in the business plan: keep it on Home.
-- A section with nothing to show yet (no series, no featured article) is hidden entirely. Never render an empty band.
+- A section or tile with nothing to show yet (no series, no featured article, no Gear article) is hidden entirely. Never render an empty band or a "Coming soon" tile.
 
 ## Content limits, so the layout survives growth
 
@@ -138,6 +138,7 @@ Text is at least 4.5:1 in both themes (large text 3:1). Every control has a visi
 - Tags: the 16 most used.
 - Titles up to 60 characters, descriptions 120 to 155.
 - Article length follows the pillar table in the business plan; Reflection essays may run 5 to 10 minutes.
+- Email capture: after the last paragraph of an article's second section and after the final paragraph, never between a heading and its text.
 
 ---
 
@@ -167,7 +168,7 @@ The page rhythm as full-width color bands: header, opening, alternating content 
 
 - Adjacent bands never share a color (the header and opening share white on purpose).
 - The footer is the darkest band and always last; the newsletter band always sits directly above it.
-- When you add or remove a band, re-alternate its neighbors. See "Removing a section" above.
+- When you add or remove a band, re-alternate its neighbors. See `guidelines/10-page-template.md`.
 
 ## PhotoSpace
 
@@ -177,17 +178,57 @@ The large rounded photo card. A page holds two at most, never in adjacent bands;
 - It stays dark in both themes. On load the image settles from scale 1.05 over 1.4s.
 - The badge is a design-time marker and is not shown on the site.
 
-## Search
-
-Free-text search over articles (Pagefind, built at deploy time), on the Explore page only — not a sitewide inline expandable bar in the header itself. A round icon button in the header links out to it (`/articles?focus=search`, which focuses the real field on load); on phones it's a labeled row in the hamburger drawer instead of a fourth header icon.
-
-- Pagefind's own runtime loads lazily, on the first focus or keystroke — never on page load.
-- Each result is one row per matching article, never per word occurrence: a pillar-colored category pill (the same `.category-pill`/`pillar--<category>` classes an article's own title block uses), the real title, and one line-clamped excerpt with just the match highlighted in copper.
-- Capped at 5 visible results. Keyboard nav follows the standard combobox pattern: arrow keys move the highlight, Enter opens the highlighted (or top) result, Escape closes.
-- The dropdown is the one other place besides card hover-lift that a shadow is allowed at rest — see Shape, space, depth above.
-
 ---
 
 # Token names
 
 The full light and dark values are in section 6 of `docs/TECHNICAL-PLAN.md` and in the design system's `tokens.json`. Use these exact names as CSS custom properties in `src/styles/tokens.css`.
+
+---
+
+# Components added for the $10k plan (October 2026)
+
+These follow every invariant above: tokens only, neutral buttons, no images on cards, no new card styles beyond these, both themes checked.
+
+## Pick (buying guides)
+
+A typographic recommendation block inside the article body.
+
+- Content: product name (card-title style), price range (muted), a one-line verdict, "Best for" and "Skip if" lines, and one neutral button ("Check price") linking to a `/go/<slug>` redirect.
+- Surface `surface-card` on the reading body, 1px `hairline`, 20px radius (callout radius). No product photo, no star ratings, no badges except an optional small "Our pick" label in `olive-text` (it is a section label).
+- At most one button per Pick. Affiliate links carry `rel="sponsored nofollow noopener"`.
+
+## Rejected (buying guides)
+
+A short list of products considered and not recommended, with one line each on why. Plain text with a hairline rule above, a label "What we didn't pick" in `olive-text`. Honest rejections are part of the brand.
+
+## Affiliate line
+
+One quiet line under the title block on articles with `affiliate: true`: "Some links are affiliate links. We only recommend what we'd buy." in `muted`, linking to `/disclosure`. Never a banner, never a box.
+
+## Video (click-to-play)
+
+- Our own poster image inside a PhotoSpace card with a centered neutral round play button (`button-bg`/`button-fg`, aria-label "Play video: <title>").
+- Nothing from YouTube loads until the click; then the `youtube-nocookie.com` player replaces the poster at the same aspect ratio.
+- **A video counts as one of the page's two photo spaces.** Never autoplay.
+
+## Calculator (tools)
+
+- Lives on `surface-1` inside a `surface-card` with 28px radius. Inputs are pill-shaped like the email field; presets are chips (active chip uses `button-bg`).
+- Results in large Manrope 700 numbers; units in `muted`.
+- Works without JavaScript as a static table; the live version is a small vanilla script.
+
+## Product card (shop)
+
+- A typographic tile (the PillarTile shape) with a product-type pill, title, one-line promise, price, and a neutral button. No mockup image on the card; one product mockup may appear on a product page as that page's photo space.
+- Copper is not used for prices or "sale" labels. No countdown timers, no fake scarcity.
+
+## Page rules for new page types
+
+| Page | Allowed sections | Notes |
+|---|---|---|
+| Editorial policy, Disclosure, Privacy | Title block, Reading body | No photo spaces; footer and header as usual |
+| Thanks, Subscribe, Method waitlist | Title block and one card | No header navigation; footer kept minimal |
+| Tools | Title block, Calculator, newsletter band | Photo spaces optional (none by default) |
+| Shop | Title block, product tiles on `surface-2`, newsletter band | At most one photo space |
+| Method sales page | Title block, Reading body, product tiles (two tiers), FAQ (Reading body), newsletter band | One photo space for the guide mockup |
