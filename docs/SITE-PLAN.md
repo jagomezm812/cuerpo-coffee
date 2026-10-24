@@ -4,8 +4,8 @@
 
 | # | Session | When | Branch | Depends on | Status |
 |---|---|---|---|---|---|
-| — | Sync documents into `docs/` | Week 1 | `docs/10k-plan` | Updated Project documents | Next |
-| 0 | Full code audit, read-only → `docs/AUDIT-2026-11.md` | Week 1 | `audit/2026-11` | Docs synced | Pending |
+| — | Sync documents into `docs/` | Week 1 | `docs/10k-plan` | Updated Project documents | Done |
+| 0 | Full code audit, read-only → `docs/AUDIT-2026-11.md` | Week 1 | `audit/2026-11` | Docs synced | Next |
 | 1 | Search foundations: thin pages out of sitemap + noindex, hreflang only where translated, Breadcrumb/FAQ/Organization/Person JSON-LD, "Updated" date, `check:content` warnings | Week 2 | `update/seo-foundations` | Session 0 | Pending |
 | 2 | Article, capture and home fixes: capture placement, checklist offer, `source` field, About newsletter band, 3 "Keep reading", hide empty tiles, full header | Week 3 | `update/article-capture` | Session 1 | Pending |
 | 3 | Trust pages: `/editorial-policy`, `/disclosure`, `/privacy`, footer column | Week 4 | `update/trust-pages` | `EDITORIAL-POLICY.md` | Pending |
