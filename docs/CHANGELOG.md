@@ -7,6 +7,11 @@ Newest first. One entry for every change that reaches the live site.
 - **Why:** [the reason]
 - **How to undo:** revert the pull request [number], or roll back in Cloudflare to the deployment before [date].
 
+## 2026-10-23 · docs: sync the $10k plan documents into the repo (on branch docs/10k-plan, not merged yet)
+- **What changed:** Documentation only, no change to the site. Eight updated planning documents were copied into `docs/`: four replace their older versions (business plan, technical plan, design system, update workflow) and four are new (marketing brief, site plan, editorial policy, AI pipeline). A new `docs/LEARNING-GUIDE.md` carries a note that the site runs as a Cloudflare Worker (not Pages) and email is moving from Kit to beehiiv. `CLAUDE.md` was replaced with the shorter block from section 13 of the technical plan, including the new Update protocol from the update workflow; the previous `CLAUDE.md` is preserved word for word in `docs/REFERENCE.md`. The 12 pending sessions from `docs/SITE-PLAN.md` were added to `docs/BACKLOG.md`.
+- **Why:** The business plan now targets $10k/month from six income streams, and the repo's documents needed to match it before the numbered site sessions begin.
+- **How to undo:** revert the pull request for branch `docs/10k-plan` (number assigned when it is opened), or restore `CLAUDE.md` from `docs/REFERENCE.md`.
+
 ## 2026-10-22 · docs: CLAUDE.md slimmed from 164k to 7.7k characters
 - **What changed:** Documentation only, no change to the site. `CLAUDE.md` had grown past its 150,000-character limit because every session appended its own notes. The session history was moved word for word into `docs/PROGRESS-INFRA.md`, `docs/PROGRESS-REDESIGN.md` and `docs/TOOLING.md`, and a short `docs/LESSONS.md` index of recurring bug classes was added. `CLAUDE.md` now holds the overview, commands, rules, a short "Current state" block (capped at 2,000 characters) and a list of which docs file to read when. The "keep CLAUDE.md up to date" rule now says: log long notes in `docs/PROGRESS-*.md`, put a short summary here, and keep only the Current state in CLAUDE.md.
 - **Why:** The file was over the size limit and loaded in full every session. All 176 old paragraphs were checked to still exist in the new files, and the build and type check pass.
